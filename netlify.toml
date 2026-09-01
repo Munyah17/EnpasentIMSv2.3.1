@@ -1,0 +1,15 @@
+[build]
+  base = "."
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[dev]
+  command = "npx vite"
+  targetPort = 5173
+  port = 8888
+  autoLaunch = false
+
+## Redirects live in public/_redirects — Netlify's precedence between this
+## file's [[redirects]] and a _redirects file is unreliable when both are
+## present, so everything routing-related is kept in one place.

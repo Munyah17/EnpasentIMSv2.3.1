@@ -1,0 +1,64 @@
+import type { InsurerRecord } from '../types'
+
+/**
+ * Which insurer a client is placed with, and what happens when nobody picks.
+ *
+ * Enpassent is a broker: it places business with almost every insurer in
+ * Zimbabwe, so the insurer is a real choice and the field is deliberately
+ * optional -- a signup must never be blocked because the question was not
+ * answered yet.
+ *
+ * When it is left blank the client is provisionally placed with the house
+ * insurer, Motions, so the record has somewhere to sit and staff have
+ * something to work from. That assignment is PROVISIONAL and is recorded as
+ * such. Two rules follow from that word, and both matter:
+ *
+ *  1. It applies to the client record only, never to a policy. Registering a
+ *     client puts no cover in place (see notifyClientRegistered), so nothing
+ *     about anyone's risk has been decided and there is nothing to disclose.
+ *     A policy is different: the insurer on it is the party that pays the
+ *     claim, so it stays whatever was explicitly chosen and is never
+ *     back-filled from a provisional assignment.
+ *  2. It is never presented as a choice the client made. Staff see the flag
+ *     -- it is their queue of people still to be asked -- and it is stored
+ *     honestly rather than being made to look deliberate.
+ */
+
+/** Matched loosely so renaming the record ("Motions Microinsurance") keeps working. */
+export const HOUSE_INSURER_MATCH = 'motions'
+
+export function isHouseInsurer(name: string | undefined | null): boolean {
+  return !!name && name.toLowerCase().includes(HOUSE_INSURER_MATCH)
+}
+
+/** The house insurer as it is actually spelled on the insurers table, so the
+ *  stored value matches a real record rather than a hardcoded guess. */
+export function findHouseInsurer(list: InsurerRecord[]): InsurerRecord | undefined {
+  return list.find(i => isHouseInsurer(i.name))
+}
+
+/** House insurer first, everything else left as it came (A-Z from the query). */
+export function houseInsurerFirst<T extends { name: string }>(list: T[]): T[] {
+  return [...list.filter(i => isHouseInsurer(i.name)), ...list.filter(i => !isHouseInsurer(i.name))]
+}
+
+export interface ResolvedInsurer {
+  insurer: string | undefined
+  insurerProvisional: boolean
+}
+
+/**
+ * Turns what the form had into what gets stored.
+ *
+ * A blank selection becomes the house insurer, flagged provisional. If the
+ * house insurer is not among the active records it stays blank rather than
+ * being invented -- writing the name of an insurer nobody can currently place
+ * business with would be worse than an empty field.
+ */
+export function resolveClientInsurer(selected: string, options: InsurerRecord[]): ResolvedInsurer {
+  if (selected) return { insurer: selected, insurerProvisional: false }
+
+  const house = findHouseInsurer(options)
+  if (!house) return { insurer: undefined, insurerProvisional: false }
+  return { insurer: house.name, insurerProvisional: true }
+}

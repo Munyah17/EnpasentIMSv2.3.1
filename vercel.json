@@ -1,0 +1,15 @@
+{
+  "rewrites": [
+    { "source": "/api/analyze-assessment-photo", "destination": "/api/ai?action=analyze-assessment-photo" },
+    { "source": "/api/score-claim-fraud", "destination": "/api/ai?action=score-claim-fraud" },
+    { "source": "/api/score-lead", "destination": "/api/ai?action=score-lead" },
+    { "source": "/api/search-leads", "destination": "/api/ai?action=search-leads" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron-reminders",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}
