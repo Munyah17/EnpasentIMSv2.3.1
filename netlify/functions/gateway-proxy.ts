@@ -10,9 +10,16 @@ import { sendViaAfrosoft, afrosoftDomain } from '../../api/_lib/afrosoft.js'
  *
  * SMS is the exception: the browser sends only recipients and text, and the
  * key, domain and sender ID come from the environment via
- * api/_lib/afrosoft.ts. This branch used to be missing here — the Vercel
- * copy grew it and this one did not — so on Netlify every send fell through
- * to the URL allowlist and came back "Invalid target url".
+ * api/_lib/afrosoft.ts. This branch was missing here — the Vercel copy grew
+ * it and this one did not — so anything reaching it with action:'sms' fell
+ * through to the URL allowlist and came back "Invalid target url".
+ *
+ * Nothing reaches it today: public/_redirects routes only /api/v1/* to a
+ * function, so /api/gateway-proxy lands on index.html and this file is dead
+ * on Netlify. Vercel is the deploy target. It is kept in step with the
+ * Vercel copy so the two cannot drift into disagreeing about how SMS is
+ * sent — routing it would need a _redirects entry, deliberately not added
+ * here.
  *
  * Locked to an explicit host allowlist so this can't be abused as an open
  * proxy to arbitrary URLs (SSRF).
