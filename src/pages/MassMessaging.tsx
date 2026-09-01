@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import type { ToastMessage, Client } from '../types'
 import type { ActivePanel } from '../App'
 import { db } from '../lib/db'
-import { sendBulkSms, getSmsSettings, saveSmsSettings, getSmsLog, clearSmsLog } from '../lib/smsService'
-import type { SmsSettings, SmsLogEntry } from '../lib/smsService'
+import { sendBulkSms, getSmsLog, clearSmsLog } from '../lib/smsService'
+import type { SmsLogEntry } from '../lib/smsService'
 import { useAuth } from '../contexts/AuthContext'
 import { formatDateTime } from '../lib/dateUtils'
 
@@ -22,7 +22,6 @@ export default function MassMessaging({ showToast }: Props) {
   const [search, setSearch] = useState('')
   const [sending, setSending] = useState(false)
   const [tab, setTab] = useState<'compose' | 'settings' | 'log'>('compose')
-  const [smsConfig, setSmsConfig] = useState<SmsSettings>(() => getSmsSettings())
   const [log, setLog] = useState<SmsLogEntry[]>([])
 
   useEffect(() => {
@@ -89,11 +88,6 @@ export default function MassMessaging({ showToast }: Props) {
     } finally {
       setSending(false)
     }
-  }
-
-  const saveSettings = () => {
-    saveSmsSettings(smsConfig)
-    showToast('success', 'SMS settings saved.')
   }
 
   return (
@@ -212,33 +206,37 @@ export default function MassMessaging({ showToast }: Props) {
         <div style={{ maxWidth: 560 }}>
           <div className="card">
             <div className="card-header"><span className="card-title">Afrosoft SMS Gateway</span></div>
-            <div className="info-banner info-banner-info" style={{ borderRadius: 8, padding: '10px 13px', marginBottom: 12, fontSize: 12 }}>
-              The gateway credentials now live on the server, so SMS works the same from every device and
-              nothing here can switch it off. These fields are kept for reference only.
+            <div className="info-banner info-banner-info" style={{ borderRadius: 8, padding: '10px 13px', marginBottom: 14, fontSize: 12 }}>
+              Configured on the server, not here. There is nothing to fill in on this page — SMS works
+              identically from every device, and no setting in a browser can switch it off.
             </div>
-            <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
-              Live SMS through Afrosoft. The account domain is specific to our Afrosoft account; only change it if
-              Afrosoft moves us to a different host (the server must allow-list any new host via the
-              <code> AFROSOFT_SMS_DOMAIN</code> env var). Sending no longer falls back to a simulation: if the
-              server has no key, a send fails and says so rather than reporting messages that never left.
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14 }}>
+              Every message leaves through Afrosoft under the sender ID below, so recipients see the same
+              name whether the text came from this page, a claim update, or the nightly billing run. There
+              is no simulation fallback: if the server is missing its key, a send fails and says so rather
+              than reporting messages that never left.
             </p>
-            <div className="form-row" style={{ marginBottom: 12 }}>
-              <div className="form-group">
-                <label>Account Domain</label>
-                <input className="form-control" value={smsConfig.domain} onChange={e => setSmsConfig(p => ({ ...p, domain: e.target.value }))} placeholder="e.g. sms.afrosoft.co.zw" />
-              </div>
-              <div className="form-group">
-                <label>API Key</label>
-                <input className="form-control" type="password" value={smsConfig.apiKey} onChange={e => setSmsConfig(p => ({ ...p, apiKey: e.target.value }))} placeholder="Afrosoft API key" />
-              </div>
-            </div>
-            <div className="form-row" style={{ marginBottom: 12 }}>
-              <div className="form-group">
-                <label>Sender ID (optional)</label>
-                <input className="form-control" value={smsConfig.senderId} onChange={e => setSmsConfig(p => ({ ...p, senderId: e.target.value }))} placeholder="Leave blank to use your account's default" />
-              </div>
-            </div>
-            <button className="btn btn-primary" onClick={saveSettings}>Save Gateway Settings</button>
+            <table className="table" style={{ marginBottom: 14 }}>
+              <tbody>
+                <tr>
+                  <td style={{ width: 150, color: 'var(--muted)' }}>Sender ID</td>
+                  <td><strong>Enpasent</strong></td>
+                </tr>
+                <tr>
+                  <td style={{ color: 'var(--muted)' }}>Account domain</td>
+                  <td>sms.vas.co.zw</td>
+                </tr>
+                <tr>
+                  <td style={{ color: 'var(--muted)' }}>API key</td>
+                  <td>Held on the server; never sent to the browser.</td>
+                </tr>
+              </tbody>
+            </table>
+            <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0 }}>
+              To change any of these, set <code>AFROSOFT_SMS_SENDER_ID</code>, <code>AFROSOFT_SMS_DOMAIN</code>{' '}
+              or <code>AFROSOFT_SMS_API_KEY</code> in the hosting dashboard and redeploy. A sender ID must first
+              be registered with Afrosoft — an unregistered one is refused and the whole batch fails.
+            </p>
           </div>
         </div>
       )}

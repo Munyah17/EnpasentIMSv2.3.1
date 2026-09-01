@@ -171,7 +171,7 @@ async function dispatchReminder(policy: Policy, client: Client | undefined, type
 
   if (type === 'r3_due' && clientPhone) {
     sendSms(clientPhone,
-      `Tariqify: Premium of $${amountDue(policy).toFixed(2)} for policy ${policy.policyNumber} is DUE TODAY. Pay now via EcoCash/Paynow to keep your coverage active.`
+      `Enpassent: Premium of $${amountDue(policy).toFixed(2)} for policy ${policy.policyNumber} is DUE TODAY. Pay now via EcoCash/Paynow to keep your coverage active.`
     ).catch(() => { /**/ })
   }
 

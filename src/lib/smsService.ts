@@ -1,57 +1,29 @@
 /**
  * SMS Service — Afrosoft Aggregator V4 HTTP API.
  *
- * The browser no longer holds any gateway credentials: it asks
- * /api/gateway-proxy to send, and the server supplies the key from
- * AFROSOFT_SMS_API_KEY. Configuration that lived in localStorage meant
- * every device had to be set up separately and one blank save silently
- * stopped all SMS while still reporting success.
+ * The browser holds no gateway credentials at all: it asks
+ * /api/gateway-proxy to send, and the server supplies the API key, account
+ * domain and sender ID from the environment (see api/_lib/afrosoft.ts).
+ *
+ * There used to be an editable settings form backed by localStorage, with
+ * the live API key as its default value — so the key shipped inside the
+ * client bundle to every browser that loaded the app, every device needed
+ * configuring separately, and one blank save stopped all SMS while still
+ * reporting success. None of it is configurable from the browser now.
  */
 
-/**
- * Version-suffixed on purpose. Settings saved under the unsuffixed key came
- * from an earlier gateway and carried a sender ID Afrosoft does not
- * recognise, which merged over these defaults and made every send fail with
- * "sender-id is invalid". A new key retires that data instead of asking each
- * user to clear their browser storage by hand.
- */
-const SETTINGS_KEY = 'tqfy_sms_settings_afrosoft'
-const LEGACY_SETTINGS_KEY = 'tqfy_sms_settings'
+/** Storage this module wrote in that earlier design. Cleared on load so a
+ *  stale sender ID from it can never be resurrected — one saved under the
+ *  unsuffixed key came from a previous gateway and failed every send with
+ *  "sender-id is invalid". */
+const RETIRED_SETTINGS_KEYS = ['tqfy_sms_settings', 'tqfy_sms_settings_afrosoft']
 
-export interface SmsSettings {
-  apiKey: string
-  /** Afrosoft account domain, e.g. "sms.afrosoft.co.zw" — provided by Afrosoft, not in their generic API docs. */
-  domain: string
-  /** Leave blank to use the default sender ID assigned to the Afrosoft account. */
-  senderId: string
-}
-
-const DEFAULTS: SmsSettings = {
-  apiKey: '72bb6de19ecf8df8',
-  domain: 'sms.vas.co.zw',
-  senderId: '',
-}
-
-export function getSmsSettings(): SmsSettings {
+function clearRetiredSettings() {
   try {
-    localStorage.removeItem(LEGACY_SETTINGS_KEY)
-    const raw = localStorage.getItem(SETTINGS_KEY)
-    if (!raw) return { ...DEFAULTS }
-    const stored = JSON.parse(raw) as Partial<SmsSettings>
-    // Only ever take the three fields this gateway understands, so a stray
-    // key from an older shape can't reach the request.
-    return {
-      apiKey: stored.apiKey ?? DEFAULTS.apiKey,
-      domain: stored.domain ?? DEFAULTS.domain,
-      senderId: stored.senderId ?? DEFAULTS.senderId,
-    }
+    RETIRED_SETTINGS_KEYS.forEach(k => localStorage.removeItem(k))
   } catch { /**/ }
-  return { ...DEFAULTS }
 }
-
-export function saveSmsSettings(s: SmsSettings) {
-  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)) } catch { /**/ }
-}
+clearRetiredSettings()
 
 export interface SmsResult {
   success: boolean

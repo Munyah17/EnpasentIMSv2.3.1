@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { sendViaAfrosoft, afrosoftAccepted, normalizeMsisdn, isValidMsisdn } from './_lib/afrosoft.js'
 
 /**
  * Billing reminders, run on the server.
@@ -112,38 +113,17 @@ async function sendMail(origin: string, input: { to: string; subject: string; te
   } catch { return false }
 }
 
-/** Zimbabwe MSISDN: 263 followed by 9 digits. Afrosoft rejects an entire
- *  batch when one recipient is malformed, so a bad number is skipped rather
- *  than allowed to take the run down with it. */
-function normalizeMsisdn(raw: string): string {
-  let digits = raw.replace(/\D/g, '')
-  if (digits.startsWith('0')) digits = `263${digits.slice(1)}`
-  else if (!digits.startsWith('263')) digits = `263${digits}`
-  return digits
-}
-function isValidMsisdn(raw: string): boolean {
-  return /^263[17]\d{8}$/.test(normalizeMsisdn(raw))
-}
-
 /** Sends straight through Afrosoft with the server's own key — the browser
- *  path (/api/gateway-proxy) exists only because a browser has no key. */
+ *  path (/api/gateway-proxy) exists only because a browser has no key. Both
+ *  go through api/_lib/afrosoft.ts, so a reminder and an in-app message
+ *  reach the handset under the same sender ID. */
 async function sendSms(to: string, message: string): Promise<boolean> {
-  const apiKey = process.env.AFROSOFT_SMS_API_KEY
-  const domain = process.env.AFROSOFT_SMS_DOMAIN || 'sms.vas.co.zw'
-  if (!apiKey || !isValidMsisdn(to)) return false
-
-  const params = new URLSearchParams({ apikey: apiKey, mobiles: normalizeMsisdn(to), sms: message })
-  const senderId = process.env.AFROSOFT_SMS_SENDER_ID
-  if (senderId) params.set('senderid', senderId)
-  if (/[^\x00-\x7F]/.test(message)) params.set('unicode', 'yes')
-
+  // A malformed number is skipped rather than sent: Afrosoft rejects an
+  // entire batch when one recipient is bad.
+  if (!isValidMsisdn(to)) return false
   try {
-    const res = await fetch(`https://${domain}/client/api/sendmessage?${params.toString()}`)
-    if (!res.ok) return false
-    const body = await res.text()
-    // Afrosoft answers 200 even when it refuses the message; the real
-    // verdict is the error-code in the body.
-    return /"error-code"\s*:\s*"000"/.test(body)
+    const res = await sendViaAfrosoft(normalizeMsisdn(to), message)
+    return res.ok && afrosoftAccepted(res.body)
   } catch { return false }
 }
 
@@ -199,7 +179,7 @@ async function dispatch(
 
   if (type === 'r3_due' && phone) {
     const ok = await sendSms(phone,
-      `Motions: Premium of $${amount} for policy ${policy.policy_number} is DUE TODAY. Pay now via EcoCash/Paynow to keep your coverage active.`)
+      `Enpassent: Premium of $${amount} for policy ${policy.policy_number} is DUE TODAY. Pay now via EcoCash/Paynow to keep your coverage active.`)
     if (ok) stats.texted++
   }
 
