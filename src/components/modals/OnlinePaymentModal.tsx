@@ -10,6 +10,7 @@ import { policyBillablePremium, billableHeadCount } from '../../lib/premium'
 import { recordActivity } from '../../lib/activityLog'
 import { ADMIN_ALERT_NUMBERS } from '../../lib/signupNotifications'
 import { sendSms } from '../../lib/smsService'
+import { taggedReference } from '../../lib/originTag'
 import { useAuth } from '../../contexts/AuthContext'
 import PhoneInput from '../ui/PhoneInput'
 
@@ -88,7 +89,10 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
     })
   }, [policy.clientId, policy.productId])
   const isAgriculture = category === 'agriculture'
-  const ref = `${policy.policyNumber}${Date.now().toString(36).toUpperCase()}`
+  // Tagged so a Paynow transaction or a bank statement line says which app
+  // took the money -- several collect through the same Paynow account. See
+  // src/lib/originTag.ts.
+  const ref = taggedReference(`${policy.policyNumber}${Date.now().toString(36).toUpperCase()}`)
   // Premiums are per head: the amount collected covers the policyholder and
   // every dependant on the policy, not the policyholder alone.
   const perPeriod = policyBillablePremium(policy, category)
