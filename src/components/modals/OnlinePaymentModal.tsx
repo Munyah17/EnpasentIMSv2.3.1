@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import type { Policy } from '../../types'
 import {
   initiateEcoCash, initiatePaynow, getZipitDetails, pollEcoCash, pollPaynow,
+  CURRENCY_LABEL, formatMoney,
 } from '../../lib/paymentGateways'
-import type { PaymentResponse } from '../../lib/paymentGateways'
+import type { PaymentResponse, Currency } from '../../lib/paymentGateways'
 import { db } from '../../lib/db'
 import { policyBillablePremium, billableHeadCount } from '../../lib/premium'
 import { recordActivity } from '../../lib/activityLog'
@@ -66,6 +67,8 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
   const { user } = useAuth()
   const [step, setStep] = useState<PayStep>('select')
   const [method, setMethod] = useState<Method>('paynow')
+  // Paynow only. EcoCash Instant and bank transfer are USD rails here.
+  const [currency, setCurrency] = useState<Currency>('USD')
   const [phone, setPhone] = useState('')
   const [result, setResult] = useState<PaymentResponse | null>(null)
   const [zipitDetails, setZipitDetails] = useState<ReturnType<typeof getZipitDetails> | null>(null)
@@ -90,7 +93,27 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
   // every dependant on the policy, not the policyholder alone.
   const perPeriod = policyBillablePremium(policy, category)
   const heads = billableHeadCount(policy, category)
-  const totalAmount = perPeriod * periods
+  const usdTotal = perPeriod * periods
+
+  /**
+   * Premiums are denominated in USD, and Paynow has no idea what currency a
+   * number is — the integration decides that. So a ZiG payment cannot just
+   * send the USD figure through the ZiG integration: charging "45" against
+   * a US$45 premium would collect roughly a dollar's worth of ZiG and mark
+   * the month paid.
+   *
+   * There is no exchange rate in this system, and hardcoding one would go
+   * stale within the week. So a ZiG payment asks for the ZiG amount
+   * outright — the person taking the payment knows the day's rate; the app
+   * does not, and guessing is worse than asking. That figure is what gets
+   * recorded as expected_amount, so the webhook's amount check still
+   * validates against something real.
+   */
+  const [zigAmount, setZigAmount] = useState('')
+  const zigTotal = Number(zigAmount)
+  const usesZig = method === 'paynow' && currency === 'ZWG'
+  const totalAmount = usesZig ? (Number.isFinite(zigTotal) ? zigTotal : 0) : usdTotal
+  const displayCurrency: Currency = usesZig ? 'ZWG' : 'USD'
 
   const req = {
     policyId: policy.id,
@@ -100,6 +123,7 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
     clientEmail: client?.email || '',
     amount: totalAmount,
     reference: ref,
+    currency: method === 'paynow' ? currency : undefined,
   }
 
   function stopPoll() {
@@ -146,7 +170,7 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
    */
   async function handleMismatch(gateway: Method, confirmedAmount: number) {
     setStep('mismatch')
-    const detail = `Reference ${ref}: ${METHOD_LABELS[gateway]} confirmed $${confirmedAmount.toFixed(2)}, expected $${totalAmount.toFixed(2)}, for ${policy.clientName} (${policy.policyNumber}). Not recorded -- needs manual reconciliation.`
+    const detail = `Reference ${ref}: ${METHOD_LABELS[gateway]} confirmed ${formatMoney(confirmedAmount, displayCurrency)}, expected ${formatMoney(totalAmount, displayCurrency)}, for ${policy.clientName} (${policy.policyNumber}). Not recorded -- needs manual reconciliation.`
     if (user) {
       void recordActivity({
         action: 'payment.validated',
@@ -158,7 +182,7 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
         severity: 'warning',
       })
     }
-    const alert = `Enpassent: PAYMENT AMOUNT MISMATCH. ${detail}`
+    const alert = `Enpasent: PAYMENT AMOUNT MISMATCH. ${detail}`
     for (const number of ADMIN_ALERT_NUMBERS) {
       void sendSms(number, alert).catch(() => { /**/ })
     }
@@ -194,8 +218,8 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
         entityId: policy.id,
         entityLabel: policy.policyNumber,
         detail: validatedManually
-          ? `Manually validated $${totalAmount.toFixed(2)} via ${METHOD_LABELS[method]} for ${policy.clientName}. Not confirmed by a gateway.`
-          : `$${totalAmount.toFixed(2)} confirmed by ${METHOD_LABELS[method]} for ${policy.clientName}. Reference ${ref}.`,
+          ? `Manually validated ${formatMoney(totalAmount, displayCurrency)} via ${METHOD_LABELS[method]} for ${policy.clientName}. Not confirmed by a gateway.`
+          : `${formatMoney(totalAmount, displayCurrency)} confirmed by ${METHOD_LABELS[method]} for ${policy.clientName}. Reference ${ref}.`,
         severity: validatedManually ? 'warning' : 'info',
       })
     }
@@ -214,6 +238,12 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
     // Only EcoCash Instant needs a number up front — it pushes the prompt to
     // that handset. Paynow collects whatever it needs on its own page.
     if (!phone && method === 'ecocash') { showToast('warning', "Enter the client's phone number — the EcoCash prompt is sent to it."); return }
+    // Blocked rather than defaulted: a ZiG payment sent for the USD figure
+    // would collect a fraction of the premium and still mark it paid.
+    if (usesZig && !(totalAmount > 0)) {
+      showToast('warning', "Enter the ZiG amount to collect — it can't be worked out from the USD premium.")
+      return
+    }
     setStep('processing')
 
     let res: PaymentResponse
@@ -237,10 +267,20 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
     if (!res.success) { setStep('failed'); return }
 
     if (res.status === 'redirect' && res.redirectUrl) {
-      // Open Paynow in new tab
-      window.open(res.redirectUrl, '_blank')
-      setStep('confirm')
-      if (res.pollUrl) startPoll(res)
+      // A full-page redirect, not a second tab.
+      //
+      // This used to window.open() Paynow and poll from the tab left
+      // behind, which only ever worked while that tab stayed open — close
+      // it, or let a phone drop the background tab, and the payment
+      // completed at Paynow with nothing here listening. Popup blockers ate
+      // the window outright often enough besides.
+      //
+      // Confirmation no longer depends on this browser at all: the server
+      // settles the reference via the webhook, /payment/return, or the
+      // reconcile sweep, whichever arrives first. So the simplest, most
+      // survivable thing is to hand the whole page over to Paynow and let
+      // it bring the payer back to /payment/return.
+      window.location.assign(res.redirectUrl)
       return
     }
 
@@ -272,7 +312,7 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
               <div style={{ background: 'var(--surface)', borderRadius: 9, padding: '12px 14px', marginBottom: 16, fontSize: 13 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <span>{policy.clientName}</span>
-                  <strong>${totalAmount.toFixed(2)}</strong>
+                  <strong>{formatMoney(totalAmount, displayCurrency)}</strong>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--muted)' }}>{policy.productName} · {policy.policyNumber}</div>
                 {heads > 1 && (
@@ -307,11 +347,60 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
                 </div>
               </div>
 
+              {method === 'paynow' && (
+                <div className="form-group" style={{ marginBottom: 14 }}>
+                  <label>Currency</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {(['USD', 'ZWG'] as Currency[]).map(c => (
+                      <button
+                        key={c}
+                        type="button"
+                        className={`btn ${currency === c ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{ flex: 1 }}
+                        onClick={() => setCurrency(c)}
+                      >
+                        {CURRENCY_LABEL[c]}
+                      </button>
+                    ))}
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                    Each currency is a separate Paynow merchant integration; the client pays in the one selected.
+                  </span>
+                </div>
+              )}
+
+              {usesZig && (
+                <div className="form-group" style={{ marginBottom: 14 }}>
+                  <label>ZiG Amount to Collect</label>
+                  <input
+                    className="form-control"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={zigAmount}
+                    onChange={e => setZigAmount(e.target.value)}
+                    placeholder="e.g. 1250.00"
+                  />
+                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                    The premium is US${usdTotal.toFixed(2)}. Enter its ZiG equivalent at today’s rate — this system
+                    holds no exchange rate, so it cannot convert for you. This exact figure is what Paynow is asked
+                    for, and what the payment is checked against.
+                  </span>
+                </div>
+              )}
+
               {method === 'ecocash' && (
                 <div className="form-group">
                   <label>Client Phone Number</label>
                   <PhoneInput value={phone} onChange={setPhone} placeholder={client?.phone} />
                   <span style={{ fontSize: 11, color: 'var(--muted)' }}>The EcoCash prompt is sent to this number.</span>
+                </div>
+              )}
+
+              {method === 'paynow' && (
+                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
+                  You’ll be taken to Paynow’s secure page to pay, then brought back here. No card or wallet
+                  details are entered in, or stored by, this system.
                 </div>
               )}
             </>
@@ -367,7 +456,7 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
               <div style={{ fontSize: 42, marginBottom: 12 }}>✅</div>
               <h4 style={{ marginBottom: 8 }}>Payment Confirmed</h4>
-              <p style={{ color: 'var(--muted)', fontSize: 13 }}>${totalAmount.toFixed(2)} received for {policy.policyNumber}.</p>
+              <p style={{ color: 'var(--muted)', fontSize: 13 }}>{formatMoney(totalAmount, displayCurrency)} received for {policy.policyNumber}.</p>
               {hadCaution && <p style={{ color: 'var(--success)', marginTop: 8, fontSize: 12 }}>✓ Caution flag cleared.</p>}
             </div>
           )}

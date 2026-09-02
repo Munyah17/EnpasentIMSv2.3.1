@@ -48,7 +48,7 @@ export async function notifyClientRegistered(client: Client, registeredBy?: stri
   if (client.phone) {
     void sendSms(
       client.phone,
-      `Enpassent Multiple Agent: Welcome ${client.name.split(' ')[0]}, your details are registered with us. An agent will be in touch to arrange cover.`,
+      `Enpasent Multiple Agent: Welcome ${client.name.split(' ')[0]}, your details are registered with us. An agent will be in touch to arrange cover.`,
     ).catch(() => { /**/ })
   }
 
@@ -77,7 +77,7 @@ Please note this registration does not itself put any cover in place. One of our
   const provisional = client.insurerProvisional && client.insurer
     ? ` No insurer chosen; provisionally with ${client.insurer}.`
     : ''
-  const alert = `Enpassent: New client registered. ${client.name}, ${client.phone || 'no phone'}${registeredBy ? `, by ${registeredBy}` : ''}. No policy yet.${provisional}`
+  const alert = `Enpasent: New client registered. ${client.name}, ${client.phone || 'no phone'}${registeredBy ? `, by ${registeredBy}` : ''}. No policy yet.${provisional}`
   const recipients = [...new Set([...ADMIN_ALERT_NUMBERS, cfg.superAdminPhone].filter(Boolean))] as string[]
   for (const number of recipients) {
     void sendSms(number, alert).catch(() => { /**/ })
@@ -97,7 +97,7 @@ export async function notifyPolicyRegistered(policy: Policy, client: Client): Pr
       : ' Your cover is active.'
     void sendSms(
       client.phone,
-      `Enpassent Multiple Agent: Welcome ${client.name.split(' ')[0]}. Policy ${policy.policyNumber} (${policy.productName}) is registered, cover ${cover}.${waiting}`,
+      `Enpasent Multiple Agent: Welcome ${client.name.split(' ')[0]}. Policy ${policy.policyNumber} (${policy.productName}) is registered, cover ${cover}.${waiting}`,
     ).catch(() => { /**/ })
   }
 
@@ -126,7 +126,7 @@ Keep this email for your records. If any detail above is wrong, contact us and w
   }
 
   // ── The office ─────────────────────────────────────────────────────
-  const alert = `Enpassent: New policy ${policy.policyNumber} registered. ${client.name}, ${policy.productName}, cover ${cover}, premium ${premium}. Contact ${client.phone || 'not given'}.`
+  const alert = `Enpasent: New policy ${policy.policyNumber} registered. ${client.name}, ${policy.productName}, cover ${cover}, premium ${premium}. Contact ${client.phone || 'not given'}.`
   // Deduplicated in case the configured super-admin line is already one of
   // the office numbers -- nobody wants the same alert twice.
   const recipients = [...new Set([...ADMIN_ALERT_NUMBERS, cfg.superAdminPhone].filter(Boolean))] as string[]

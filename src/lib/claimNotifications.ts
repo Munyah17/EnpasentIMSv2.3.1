@@ -58,7 +58,7 @@ Please retain this email for your records. All parties will be copied on further
     void sendEmail({ to: client.email, cc, subject, body: clientBody, linkedTo: claim.id, folder: 'claims', from: MAILBOXES.claims })
   }
   if (client.phone) {
-    void sendSms(client.phone, `Enpassent: Your claim ${claim.claimNumber} has been submitted. You'll be notified as it progresses.`).catch(() => { /**/ })
+    void sendSms(client.phone, `Enpasent Multiple Agent: Your claim ${claim.claimNumber} has been submitted. You'll be notified as it progresses.`).catch(() => { /**/ })
   }
 }
 
@@ -115,7 +115,7 @@ const CLAIMS_ESCALATION_CC_EMAIL = 'info@motions.co.zw'
 function notifySuperAdmin(claim: Claim, stageMessage: string) {
   const cfg = getNotifSettings()
   if (cfg.superAdminPhone) {
-    void sendSms(cfg.superAdminPhone, `Enpassent: Claim ${claim.claimNumber}: ${stageMessage}`).catch(() => { /**/ })
+    void sendSms(cfg.superAdminPhone, `Enpasent: Claim ${claim.claimNumber}: ${stageMessage}`).catch(() => { /**/ })
   }
 }
 
@@ -131,7 +131,7 @@ export async function notifyClaimIntakeAccepted(claim: Claim, processor: StaffCo
       body: `Dear ${claim.clientName},\n\nYour claim ${claim.claimNumber} has been received and accepted for processing.${claimSummaryBlock(claim)}\n\nIt is now with our claims processing team for assessment.${signature(cfg.signature)}`,
     })
   }
-  if (client.phone) void sendSms(client.phone, `Enpassent: Your claim ${claim.claimNumber} was received and is now being processed.`).catch(() => { /**/ })
+  if (client.phone) void sendSms(client.phone, `Enpasent Multiple Agent: Your claim ${claim.claimNumber} was received and is now being processed.`).catch(() => { /**/ })
 
   if (processor.email) {
     void sendEmail({
@@ -139,7 +139,7 @@ export async function notifyClaimIntakeAccepted(claim: Claim, processor: StaffCo
       body: `${claim.claimNumber} has been accepted at intake and assigned to you for assessment.${claimSummaryBlock(claim)}\n\nLog in to Tariqify IMS to review.${signature(cfg.signature)}`,
     })
   }
-  if (processor.phone) void sendSms(processor.phone, `Enpassent: Claim ${claim.claimNumber} assigned to you for assessment.`).catch(() => { /**/ })
+  if (processor.phone) void sendSms(processor.phone, `Enpasent: Claim ${claim.claimNumber} assigned to you for assessment.`).catch(() => { /**/ })
 }
 
 export async function notifyClaimIntakeRejected(claim: Claim): Promise<void> {
@@ -153,7 +153,7 @@ export async function notifyClaimIntakeRejected(claim: Claim): Promise<void> {
       body: `Dear ${claim.clientName},\n\nWe were unable to accept your claim ${claim.claimNumber} for processing.${claimSummaryBlock(claim)}\n\nPlease contact us if you believe this is in error.${signature(cfg.signature)}`,
     })
   }
-  if (client.phone) void sendSms(client.phone, `Enpassent: Your claim ${claim.claimNumber} could not be accepted. Please contact us for details.`).catch(() => { /**/ })
+  if (client.phone) void sendSms(client.phone, `Enpasent Multiple Agent: Your claim ${claim.claimNumber} could not be accepted. Please contact us for details.`).catch(() => { /**/ })
 }
 
 export async function notifyClaimEscalated(claim: Claim, reviewer: StaffContact): Promise<void> {
@@ -168,7 +168,7 @@ export async function notifyClaimEscalated(claim: Claim, reviewer: StaffContact)
       body: `Dear ${claim.clientName},\n\nYour claim ${claim.claimNumber} has completed assessment and is now with our final reviewer for a decision.${claimSummaryBlock(claim)}${signature(cfg.signature)}`,
     })
   }
-  if (client.phone) void sendSms(client.phone, `Enpassent: Your claim ${claim.claimNumber} is now with our final reviewer.`).catch(() => { /**/ })
+  if (client.phone) void sendSms(client.phone, `Enpasent Multiple Agent: Your claim ${claim.claimNumber} is now with our final reviewer.`).catch(() => { /**/ })
 
   if (reviewer.email) {
     void sendEmail({
@@ -176,7 +176,7 @@ export async function notifyClaimEscalated(claim: Claim, reviewer: StaffContact)
       body: `${claim.claimNumber} has been assessed and escalated to you for a final decision.${claimSummaryBlock(claim)}${claim.assessmentNotes ? `\n\nAssessment notes:\n${claim.assessmentNotes}` : ''}\n\nLog in to Tariqify IMS to approve or decline.${signature(cfg.signature)}`,
     })
   }
-  if (reviewer.phone) void sendSms(reviewer.phone, `Enpassent: Claim ${claim.claimNumber} needs your final decision.`).catch(() => { /**/ })
+  if (reviewer.phone) void sendSms(reviewer.phone, `Enpasent: Claim ${claim.claimNumber} needs your final decision.`).catch(() => { /**/ })
 }
 
 export async function notifyClaimFinalDecision(claim: Claim): Promise<void> {
@@ -193,7 +193,7 @@ export async function notifyClaimFinalDecision(claim: Claim): Promise<void> {
     })
   }
   if (client.phone) {
-    void sendSms(client.phone, `Enpassent: Your claim ${claim.claimNumber} has been ${approved ? 'APPROVED' : 'DECLINED'}.`).catch(() => { /**/ })
+    void sendSms(client.phone, `Enpasent Multiple Agent: Your claim ${claim.claimNumber} has been ${approved ? 'APPROVED' : 'DECLINED'}.`).catch(() => { /**/ })
   }
 }
 

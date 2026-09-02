@@ -179,7 +179,7 @@ async function dispatch(
 
   if (type === 'r3_due' && phone) {
     const ok = await sendSms(phone,
-      `Enpassent: Premium of $${amount} for policy ${policy.policy_number} is DUE TODAY. Pay now via EcoCash/Paynow to keep your coverage active.`)
+      `Enpasent Multiple Agent: Premium of $${amount} for policy ${policy.policy_number} is DUE TODAY. Pay now via EcoCash/Paynow to keep your coverage active.`)
     if (ok) stats.texted++
   }
 

@@ -17,13 +17,27 @@
 /**
  * The name shown on the recipient's handset.
  *
+ * The account is registered with Afrosoft under the user ID "Motions",
+ * which is also the default sender ID assigned to it — that default is what
+ * recipients saw until this was set, and it is the wrong brand entirely.
+ *
+ * The intended name is "Enpasent Multiple Agent", but a GSM alphanumeric
+ * sender ID is capped at 11 characters and that is 23, so it cannot be the
+ * sender ID; carriers reject or truncate it. The handset shows "Enpasent"
+ * and the message text carries the full name — see the bodies in
+ * src/lib/signupNotifications.ts.
+ *
  * Afrosoft only accepts sender IDs registered against the account and
- * rejects anything else outright with "sender-id is invalid" — which fails
- * the whole batch, not one message. So this stays overridable by
- * AFROSOFT_SMS_SENDER_ID: if Afrosoft registers a different spelling or
- * length, that is an env var change, not a redeploy.
+ * rejects anything else outright with "sender-id is invalid", which fails
+ * the whole batch rather than one message. So this stays overridable by
+ * AFROSOFT_SMS_SENDER_ID: registering a different spelling is then an env
+ * var change, not a redeploy.
  */
 export const DEFAULT_SENDER_ID = 'Enpasent'
+
+/** What the full brand name is, for message bodies. Not usable as a sender
+ *  ID — see DEFAULT_SENDER_ID. */
+export const BRAND_NAME = 'Enpasent Multiple Agent'
 
 /** Assigned to this account by Afrosoft; not something in their generic docs. */
 export const DEFAULT_DOMAIN = 'sms.vas.co.zw'
@@ -88,12 +102,31 @@ export async function sendViaAfrosoft(mobiles: string, message: string): Promise
     mobiles,
     sms: message,
     senderid: afrosoftSenderId(),
+    // "Optional, but better to pass unique id" per Afrosoft's docs: one id
+    // per message, echoed back on both sent-sms-details and
+    // failed-sms-details. Afrosoft reformats the numbers it returns
+    // ("263…" comes back "+263…"), so matching a response row to a
+    // recipient by number alone means normalising both sides and hoping;
+    // an id we chose is exact.
+    'client-sms-ids': clientSmsIds(mobiles),
   })
   // Non-ASCII has to be declared or Afrosoft mangles it.
   if (/[^\x00-\x7F]/.test(message)) params.set('unicode', 'yes')
 
   const upstream = await fetch(`https://${afrosoftDomain()}/client/api/sendmessage?${params.toString()}`)
   return { ok: upstream.ok, status: upstream.status, body: await upstream.text() }
+}
+
+/**
+ * One id per recipient, positionally matching the comma-separated `mobiles`.
+ *
+ * Deterministic from the number plus a per-batch nonce, so the caller can
+ * recompute the same ids to read the response without having to thread them
+ * back through the relay.
+ */
+export function clientSmsIds(mobiles: string): string {
+  const batch = Date.now().toString(36)
+  return mobiles.split(',').map((m, i) => `${batch}-${i}-${m.replace(/\D/g, '').slice(-9)}`).join(',')
 }
 
 /**

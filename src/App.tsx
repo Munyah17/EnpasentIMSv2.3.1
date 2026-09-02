@@ -38,6 +38,13 @@ const MnoIntegration = lazyWithRecovery('MnoIntegration', () => import('./pages/
 const SystemHealthPage = lazyWithRecovery('SystemHealthPage', () => import('./pages/SystemHealthPage'))
 const Settings = lazyWithRecovery('Settings', () => import('./pages/Settings'))
 const DeveloperApi = lazyWithRecovery('DeveloperApi', () => import('./pages/DeveloperApi'))
+// Where Paynow redirects the payer back to. Deliberately outside AuthGate:
+// a full-page redirect can land in a browser with no session (a client
+// paying on their own phone), and showing them a login screen instead of
+// their payment's outcome would be the wrong answer to "did that work?".
+// It asserts nothing on its own — the server re-polls Paynow before this
+// page says anything. See src/pages/PaymentReturn.tsx.
+const PaymentReturn = lazyWithRecovery('PaymentReturn', () => import('./pages/PaymentReturn'))
 const MassMessaging = lazyWithRecovery('MassMessaging', () => import('./pages/MassMessaging'))
 const BillingReminders = lazyWithRecovery('BillingReminders', () => import('./pages/BillingReminders'))
 const PreLossAssessments = lazyWithRecovery('PreLossAssessments', () => import('./pages/PreLossAssessments'))
@@ -193,6 +200,14 @@ function AuthGate() {
 
   return (
     <Routes>
+      <Route
+        path="/payment/return"
+        element={
+          <Suspense fallback={<div className="app-loading">Loading…</div>}>
+            <PaymentReturn />
+          </Suspense>
+        }
+      />
       <Route path="/super-admin" element={user ? <Navigate to="/" replace /> : <SuperAdminLogin />} />
       <Route path="/admin" element={user ? <Navigate to="/" replace /> : <AdminLogin />} />
       <Route path="/*" element={user ? <AppInner /> : <LoginScreen />} />

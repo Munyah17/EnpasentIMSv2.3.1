@@ -12,11 +12,17 @@
  * Zipit           — ZimSwitch ZIPIT bank transfer (display-only; verified
  *                   manually by staff against the bank statement).
  *
- * EcoCash Instant credentials live on the server (EIP_* env vars, see
- * api/ecocash-instant.ts) and never touch the browser. Paynow's integration
- * id/key are still configured in Billing & Reminders → Gateway Settings and
- * relayed through api/gateway-proxy.ts, which exists because Paynow rejects
- * direct browser calls via CORS.
+ * No card, wallet or bank detail is ever entered in this application or
+ * passed through it. Paynow's own hosted page collects all of that; this
+ * side only ever sends a reference, an amount and a currency, and is later
+ * told by the server whether that reference was paid.
+ *
+ * Every gateway credential lives on the server and never touches the
+ * browser: EcoCash Instant behind EIP_* (api/ecocash-instant.ts), Paynow
+ * behind PAYNOW_USD_* / PAYNOW_ZIG_* (api/paynow.ts). Paynow's integration
+ * key is the webhook's signing secret -- anyone holding it can forge a
+ * "paid" status update -- so it is server-only, not merely inconvenient to
+ * expose.
  */
 
 import type { GatewaySettings } from '../types'
@@ -64,6 +70,20 @@ export function saveGatewaySettings(s: GatewaySettings) {
 
 // ── Common types ────────────────────────────────────────────────────
 
+/**
+ * ZWG is the ISO code for Zimbabwe Gold; "ZiG" is what everyone calls it.
+ * Paynow has no currency field — an integration ID *is* a currency — so
+ * this selects which of the two merchant integrations the server uses.
+ */
+export type Currency = 'USD' | 'ZWG'
+
+export const CURRENCY_LABEL: Record<Currency, string> = { USD: 'USD', ZWG: 'ZiG' }
+export const CURRENCY_SYMBOL: Record<Currency, string> = { USD: 'US$', ZWG: 'ZiG ' }
+
+export function formatMoney(amount: number, currency: Currency): string {
+  return `${CURRENCY_SYMBOL[currency]}${amount.toFixed(2)}`
+}
+
 export interface PaymentRequest {
   policyId: string
   policyNumber: string
@@ -72,6 +92,8 @@ export interface PaymentRequest {
   clientEmail: string
   amount: number
   reference: string
+  /** Paynow only. Defaults to USD server-side when omitted. */
+  currency?: Currency
 }
 
 export interface PaymentResponse {
@@ -242,6 +264,10 @@ export async function initiatePaynow(req: PaymentRequest): Promise<PaymentRespon
         action: 'initiate',
         reference: ref,
         amount: req.amount,
+        // Picks which merchant integration the server uses. Sending this
+        // wrong does not fail loudly -- it bills the wrong ledger in the
+        // wrong denomination, and only reconciliation finds it.
+        currency: req.currency ?? 'USD',
         description: `Insurance Premium: ${req.policyNumber}`,
         email: req.clientEmail,
         // Required server-side so api/paynow-webhook.ts has a record of
@@ -255,11 +281,14 @@ export async function initiatePaynow(req: PaymentRequest): Promise<PaymentRespon
     return { success: false, status: 'failed', message: `Could not reach the Paynow service: ${e}`, gateway: 'paynow' }
   }
 
-  // Unconfigured is a refusal, not a payment.
+  // Unconfigured is a refusal, not a payment. The server names the exact
+  // missing pair (each currency has its own integration), so its message is
+  // more useful than anything this side could guess at.
   if (httpStatus === 503) {
     return {
       success: false, status: 'failed', gateway: 'paynow',
-      message: 'Paynow is not configured on the server. Set PAYNOW_INTEGRATION_ID and PAYNOW_INTEGRATION_KEY, or take the payment another way and record it on the Payments page.',
+      message: reply.error
+        ?? 'Paynow is not configured on the server. Take the payment another way and record it on the Payments page.',
     }
   }
 
