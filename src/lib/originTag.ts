@@ -15,8 +15,11 @@
  * away; the dash after it is the only separator. Paynow and EcoCash Instant
  * both accept it.
  *
- * Policy numbers are deliberately left untagged: a client reads and quotes
- * those, and they identify cover rather than a movement of money.
+ * Policy numbers are never run through taggedReference() below -- a client
+ * reads and quotes those, and they identify cover rather than a movement of
+ * money, so they get their own shape from generatePolicyNumber() instead.
+ * Both start with the same ENPA identity; only the money-reference tagging
+ * function's "-<original id>" mechanics don't apply to a policy number.
  */
 export const ORIGIN_TAG = 'ENPA'
 
@@ -36,4 +39,33 @@ export function taggedReference(reference: string): string {
  *  mixed export from Paynow or a bank statement. */
 export function isOwnReference(reference: string): boolean {
   return reference.startsWith(`${ORIGIN_TAG}-`)
+}
+
+/**
+ * A new policy number.
+ *
+ * The app this was cloned from (Tariqify IMS) generates its own policy
+ * numbers as `MIMS<year><3 digits>` -- its own origin tag directly followed
+ * by a truncated timestamp, no separator. Enpassent's own two policy-number
+ * sites had inherited that exact shape, one even reusing the literal string
+ * "POL" byte-for-byte from Tariqify's USSD flow -- so two systems built by
+ * the same author could produce numbers indistinguishable from each other
+ * by format alone, on top of not sharing a prefix with anything else this
+ * app already brands as ENPA (see taggedReference() above).
+ *
+ * `<TAG>-<YYMM>-<5 base36 chars>` is deliberately a different shape, not
+ * just a different four letters in the same slots: dash-grouped, a
+ * year+month instead of year alone, and a random alphanumeric tail rather
+ * than trailing timestamp digits -- which also removes a real collision
+ * risk the old scheme had (two policies created within the same
+ * millisecond-derived slice could tie; 5 base36 characters is 36^5, over
+ * 60 million values, checked per call site's own creation path, not
+ * globally unique-guaranteed but astronomically unlikely to collide twice
+ * in one run).
+ */
+export function generatePolicyNumber(now = new Date()): string {
+  const year = String(now.getFullYear()).slice(-2)
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const suffix = Math.random().toString(36).slice(2, 7).toUpperCase().padEnd(5, '0')
+  return `${ORIGIN_TAG}-${year}${month}-${suffix}`
 }

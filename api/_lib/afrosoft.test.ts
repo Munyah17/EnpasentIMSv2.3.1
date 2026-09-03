@@ -107,4 +107,17 @@ describe('afrosoft gateway', () => {
     expect(isValidMsisdn('not a number')).toBe(false)
     expect(isValidMsisdn('26377123456')).toBe(false)
   })
+
+  /** Regression: "+2630773909307" -- a country code AND a local leading 0,
+   *  both present -- used to pass through unnormalised (it doesn't start
+   *  with "0", so the old startsWith('0') check never fired) and fail
+   *  validation outright: "Not a valid Zimbabwe mobile number". All four
+   *  ways this same number gets typed must resolve identically. */
+  it('treats +263, 263, 0, and +2630 prefixes as the same number', () => {
+    const same = ['+263773909307', '263773909307', '0773909307', '+2630773909307']
+    for (const raw of same) {
+      expect(normalizeMsisdn(raw)).toBe('263773909307')
+      expect(isValidMsisdn(raw)).toBe(true)
+    }
+  })
 })

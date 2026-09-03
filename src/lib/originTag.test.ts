@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ORIGIN_TAG, taggedReference, isOwnReference } from './originTag'
+import { ORIGIN_TAG, taggedReference, isOwnReference, generatePolicyNumber } from './originTag'
 
 describe('originTag', () => {
   it('opens a reference with this app’s tag', () => {
@@ -32,5 +32,32 @@ describe('originTag', () => {
 
   it('is distinct from the other apps on the same Paynow account', () => {
     expect(['MIMS', 'MWEB']).not.toContain(ORIGIN_TAG)
+  })
+})
+
+describe('generatePolicyNumber', () => {
+  it('opens with this app’s tag, dash-separated', () => {
+    expect(generatePolicyNumber()).toMatch(/^ENPA-\d{4}-[A-Z0-9]{5}$/)
+  })
+
+  /** The whole point: Tariqify IMS's own scheme is `MIMS<year><3 digits>`,
+   *  no separator, digits-only tail -- and Enpassent's two policy-number
+   *  sites had inherited that exact shape (one even reusing "POL" verbatim).
+   *  The new scheme must not just swap the prefix back in the same slots. */
+  it('is shaped differently from Tariqify IMS’s own scheme, not just relabelled', () => {
+    const enpassent = generatePolicyNumber(new Date('2026-09-03'))
+    const tariqifyShape = /^MIMS\d{4}\d{3}$/ // MIMS + year + 3 digits, no separator
+    expect(enpassent).not.toMatch(tariqifyShape)
+    expect(enpassent).toContain('-') // Tariqify's has none at all
+  })
+
+  it('encodes the year and month it was generated', () => {
+    expect(generatePolicyNumber(new Date('2026-09-03'))).toMatch(/^ENPA-2609-/)
+    expect(generatePolicyNumber(new Date('2031-01-15'))).toMatch(/^ENPA-3101-/)
+  })
+
+  it('does not repeat across a realistic run', () => {
+    const seen = new Set(Array.from({ length: 500 }, () => generatePolicyNumber()))
+    expect(seen.size).toBe(500)
   })
 })

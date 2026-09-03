@@ -74,6 +74,21 @@ describe('smsService', () => {
     expect(bulk.results.find(r => r.phone === 'not a number')?.result.error).toMatch(/not a valid zimbabwe mobile/i)
   })
 
+  /** Regression: "+2630773909307" -- a country code AND a local leading 0,
+   *  both present -- used to be reported as "Not a valid Zimbabwe mobile
+   *  number" instead of being treated as the same number as the other three
+   *  ways it gets typed. */
+  it('treats +263, 263, 0, and +2630 prefixes as the same recipient', async () => {
+    const fetchMock = mockGateway(SUCCESS('+263773909307', 'msg-1'))
+    const bulk = await sendBulkSms(
+      ['+263773909307', '263773909307', '0773909307', '+2630773909307'], 'Hello',
+    )
+    expect(bulk.failed).toBe(0)
+    expect(bulk.sent).toBe(4)
+    const body = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as { body?: string })?.body ?? '{}'))
+    expect(body.mobiles).toBe('263773909307,263773909307,263773909307,263773909307')
+  })
+
   it('reports per-number outcomes across a bulk send', async () => {
     mockGateway({
       status: { 'error-code': '000', 'error-status': 'Success', 'error-description': 'Success' },

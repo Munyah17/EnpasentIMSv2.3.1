@@ -31,10 +31,18 @@ function authHeader(): string {
 }
 
 /** EIP wants MSISDN as 263XXXXXXXXX. */
+/**
+ * Normalises any of the four ways a Zimbabwean number gets typed --
+ * "0773909307", "263773909307", "+263773909307", and the common mistake
+ * "+2630773909307" (country code AND the local leading 0, both present) --
+ * to the same "263773909307". See api/_lib/afrosoft.ts's copy of this same
+ * function for why the country code is stripped before the leading 0 is
+ * checked, not after.
+ */
 export function normalizeMsisdn(phone: string): string {
-  const digits = phone.replace(/\D/g, '')
-  if (digits.startsWith('263')) return digits
-  if (digits.startsWith('0')) return `263${digits.slice(1)}`
+  let digits = phone.replace(/\D/g, '')
+  if (digits.startsWith('263')) digits = digits.slice(3)
+  if (digits.startsWith('0')) digits = digits.slice(1)
   return `263${digits}`
 }
 

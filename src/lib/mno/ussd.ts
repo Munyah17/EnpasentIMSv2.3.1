@@ -13,6 +13,7 @@
  */
 import type { UssdActionPayload, UssdSession, ApiGatewayResponse } from '../../types/mno'
 import { localStore } from '../localStore'
+import { generatePolicyNumber } from '../originTag'
 import { mnoStore } from './mnoStore'
 import { runGatewayAuth, okResponse, logApiRequest } from './gateway'
 import { emitEvent } from './webhooks'
@@ -197,7 +198,7 @@ export async function handleUssdAction(
         })
       }
       if (prod) {
-        const policyNumber = `POL${new Date().getFullYear()}${Math.floor(Math.random() * 900000 + 100000)}`
+        const policyNumber = generatePolicyNumber()
         const policy = localStore.policies.create({
           id: uid(), policyNumber, clientId: client.id, clientName: client.name,
           productId: prod.id, productName: prod.name, premium: prod.premium,

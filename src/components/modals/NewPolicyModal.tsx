@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import PhoneInput from '../ui/PhoneInput'
 import DateInput from '../ui/DateInput'
 import InsurerSelect from '../ui/InsurerSelect'
+import { generatePolicyNumber } from '../../lib/originTag'
 import { resolveClientInsurer } from '../../lib/insurerAssignment'
 import { premiumPeriodLabel } from '../../lib/productUtils'
 import { computeAssignedStartDate } from '../../lib/policyLifecycle'
@@ -222,7 +223,7 @@ export default function NewPolicyModal({ onClose, onSave, showToast, initialClie
     }
 
     // Create policy with the client
-    const policyNumber = `EMA${new Date().getFullYear()}${String(Date.now()).slice(-3)}`
+    const policyNumber = generatePolicyNumber()
     const endDate = new Date(startDate)
     endDate.setFullYear(endDate.getFullYear() + 1)
     const policy: Policy = {

@@ -54,12 +54,23 @@ export function afrosoftConfigured(): boolean {
   return !!process.env.AFROSOFT_SMS_API_KEY
 }
 
-/** Zimbabwe MSISDN: strips formatting, converts a local 0-prefix to 263. */
+/**
+ * Normalises any of the four ways a Zimbabwean number gets typed --
+ * "0773909307", "263773909307", "+263773909307", and the common mistake
+ * "+2630773909307" (country code AND the local leading 0, both present) --
+ * to the same "263773909307".
+ *
+ * The country code is stripped first, before the leading 0 is checked, so a
+ * number carrying both isn't left with a stray 0 wedged after 263 -- the
+ * previous order (checking for a leading 0 first) never got there, because
+ * "2630773909307" doesn't start with "0", so the whole number passed
+ * through unchanged and failed validation.
+ */
 export function normalizeMsisdn(raw: string): string {
   let digits = raw.replace(/\D/g, '')
-  if (digits.startsWith('0')) digits = `263${digits.slice(1)}`
-  else if (!digits.startsWith('263')) digits = `263${digits}`
-  return digits
+  if (digits.startsWith('263')) digits = digits.slice(3)
+  if (digits.startsWith('0')) digits = digits.slice(1)
+  return `263${digits}`
 }
 
 /**
