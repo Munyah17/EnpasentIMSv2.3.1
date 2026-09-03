@@ -1,5 +1,5 @@
 -- ================================================================
--- TARIQIFY IMS — PROFILES + AUTH TRIGGER (for partial rebuilds)
+-- ENPASSENT IMS — PROFILES + AUTH TRIGGER (for partial rebuilds)
 -- Prefer: rebuild_database.sql for a complete one-shot rebuild
 -- ================================================================
 

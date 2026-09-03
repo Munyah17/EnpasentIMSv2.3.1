@@ -7,7 +7,7 @@ export const USERS: AppUser[] = [
   {
     id: 'u1',
     name: 'Enpassent Multiple Agent',
-    email: 'admin@tariqify.com',
+    email: 'admin@enpassent.co.zw',
     password: 'admin1234',
     role: 'super_admin',
     department: 'Management',
@@ -19,7 +19,7 @@ export const USERS: AppUser[] = [
   {
     id: 'u2',
     name: 'Rudo Chikwanda',
-    email: 'claims@tariqify.com',
+    email: 'claims@enpassent.co.zw',
     password: 'staff1234',
     role: 'claims_officer',
     department: 'Claims',
@@ -31,7 +31,7 @@ export const USERS: AppUser[] = [
   {
     id: 'u3',
     name: 'Blessing Moyo',
-    email: 'policy@tariqify.com',
+    email: 'policy@enpassent.co.zw',
     password: 'staff1234',
     role: 'policy_admin',
     department: 'Policy Administration',
@@ -43,7 +43,7 @@ export const USERS: AppUser[] = [
   {
     id: 'u4',
     name: 'Tendai Nhamo',
-    email: 'finance@tariqify.com',
+    email: 'finance@enpassent.co.zw',
     password: 'staff1234',
     role: 'finance',
     department: 'Finance',
@@ -55,7 +55,7 @@ export const USERS: AppUser[] = [
   {
     id: 'u5',
     name: 'Chipo Sibanda',
-    email: 'crm@tariqify.com',
+    email: 'crm@enpassent.co.zw',
     password: 'staff1234',
     role: 'client_relations',
     department: 'Client Relations',
@@ -79,7 +79,7 @@ export const USERS: AppUser[] = [
   {
     id: 'u7',
     name: 'Farai Mutasa',
-    email: 'admin2@tariqify.com',
+    email: 'admin2@enpassent.co.zw',
     password: 'staff1234',
     role: 'admin',
     department: 'Administration',
@@ -393,25 +393,25 @@ export const TICKETS: Ticket[] = [
 export const EMAILS: EmailMessage[] = [
   {
     id: 'em1', from: 'nomsa.ndlovu@gmail.com', fromName: 'Nomsa Ndlovu',
-    to: 'info@tariqify.com', subject: 'Re: Claim CLM2026001 - Documents submitted',
-    body: 'Dear Tariqify Team,\n\nPlease find attached the required documents for my claim CLM2026001. I have included the death certificate, national ID of the deceased, and my own ID.\n\nKindly confirm receipt.\n\nRegards,\nNomsa Ndlovu',
+    to: 'info@enpassent.co.zw', subject: 'Re: Claim CLM2026001 - Documents submitted',
+    body: 'Dear Enpassent Team,\n\nPlease find attached the required documents for my claim CLM2026001. I have included the death certificate, national ID of the deceased, and my own ID.\n\nKindly confirm receipt.\n\nRegards,\nNomsa Ndlovu',
     timestamp: '2026-05-08T14:30:00Z', read: false, folder: 'inbox', linkedTo: 'cl1',
   },
   {
-    id: 'em2', from: 'info@tariqify.com', fromName: 'Tariqify IMS',
+    id: 'em2', from: 'info@enpassent.co.zw', fromName: 'Enpassent IMS',
     to: 'simba.dube@gmail.com', subject: 'Your policy EMA2024001 premium reminder',
     body: 'Dear Simba Dube,\n\nThis is a friendly reminder that your funeral cover premium of $5.00 is due on 15 May 2026.\n\nPlease ensure your EcoCash wallet has sufficient funds.\n\nRegards,\nEnpassent Multiple Agent',
     timestamp: '2026-05-07T09:00:00Z', read: true, folder: 'sent', linkedTo: 'pol1',
   },
   {
     id: 'em3', from: 'garikai.mhike@gmail.com', fromName: 'Garikai Mhike',
-    to: 'info@tariqify.com', subject: 'Policy reinstatement request',
+    to: 'info@enpassent.co.zw', subject: 'Policy reinstatement request',
     body: 'Good morning,\n\nI would like to reinstate my policy EMA2024006 which lapsed. I am now able to make payments.\n\nPlease advise on the process.\n\nGarikai Mhike',
     timestamp: '2026-05-06T11:20:00Z', read: true, folder: 'inbox',
   },
   {
-    id: 'em4', from: 'info@tariqify.com', fromName: 'Tariqify IMS',
-    to: 'tafa.chirwa@gmail.com', subject: 'Welcome to Tariqify IMS - Policy EMA2024004',
+    id: 'em4', from: 'info@enpassent.co.zw', fromName: 'Enpassent IMS',
+    to: 'tafa.chirwa@gmail.com', subject: 'Welcome to Enpassent IMS - Policy EMA2024004',
     body: 'Dear Tafadzwa Chirwa,\n\nWelcome to Enpassent Multiple Agent! Your Life Cover Essential policy (EMA2024004) is now active.\n\nCover Amount: $10,000\nMonthly Premium: $10.00\nPayment Method: OneMoney\n\nFor any queries, reply to this email or call +263 77 123 4567.\n\nEnpassent Multiple Agent',
     timestamp: '2026-03-01T12:00:00Z', read: true, folder: 'sent', linkedTo: 'pol4',
   },
@@ -448,5 +448,5 @@ export const REMINDERS: Reminder[] = [
   { id: 'r2', type: 'payment_due', clientId: 'c2', clientName: 'Nomsa Ndlovu', policyId: 'pol3', policyNumber: 'EMA2024003', dueDate: '2026-05-10', message: 'Your premium of $12.00 is due on 10 May.', sent: true, channel: 'sms' },
   { id: 'r3', type: 'policy_renewal', clientId: 'c5', clientName: 'Garikai Mhike', policyId: 'pol6', policyNumber: 'EMA2024006', dueDate: '2026-05-12', message: 'Your policy EMA2024006 has lapsed. Please contact us to reinstate.', sent: false, channel: 'whatsapp' },
   { id: 'r4', type: 'claim_followup', clientId: 'c2', clientName: 'Nomsa Ndlovu', policyId: 'pol3', policyNumber: 'EMA2024003', dueDate: '2026-05-10', message: 'Follow up on claim CLM2026001. Documents under review.', sent: false, channel: 'email' },
-  { id: 'r5', type: 'birthday', clientId: 'c3', clientName: 'Tafadzwa Chirwa', dueDate: '2026-05-08', message: 'Happy birthday Tafadzwa! Tariqify IMS wishes you well.', sent: true, channel: 'sms' },
+  { id: 'r5', type: 'birthday', clientId: 'c3', clientName: 'Tafadzwa Chirwa', dueDate: '2026-05-08', message: 'Happy birthday Tafadzwa! Enpassent IMS wishes you well.', sent: true, channel: 'sms' },
 ]

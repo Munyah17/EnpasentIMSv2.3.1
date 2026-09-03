@@ -1,5 +1,5 @@
 -- ================================================================
--- TARIQIFY IMS — RESET DATABASE (for partial / manual rebuilds)
+-- ENPASSENT IMS — RESET DATABASE (for partial / manual rebuilds)
 -- Prefer: rebuild_database.sql for a complete one-shot rebuild
 -- ================================================================
 

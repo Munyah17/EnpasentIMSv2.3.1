@@ -121,8 +121,7 @@ const TEXT: [number, number, number] = [15, 28, 46]
 const NAVY: [number, number, number] = [33, 46, 108]
 const TABLE_HEAD: [number, number, number] = [191, 200, 232]
 
-/** Builds the policy report/certificate PDF, laid out to match the Motions
- *  Microinsurance policy document template: a plain (non-banded) header
+/** Builds the policy report/certificate PDF: a plain (non-banded) header
  *  with the logo on the left and company contact details on the right,
  *  a payment summary strip, then banded POLICY INFORMATION / PERSONAL
  *  INFORMATION / DEPENDANTS sections — each dependant gets its own boxed
@@ -377,7 +376,7 @@ export async function exportClaimAssessmentReport(
   doc.rect(0, 24, pageWidth, 1.5, 'F')
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(15)
-  doc.text('MOTIONS', 14, 12)
+  doc.text('ENPASSENT', 14, 12)
   doc.setFontSize(9)
   doc.text('AGRICULTURE PHYSICAL ASSESSMENT REPORT', 14, 19)
   doc.text(claimNumber, pageWidth - 14, 15, { align: 'right' })
@@ -501,7 +500,7 @@ export async function exportClaimAssessmentReport(
   const pageHeight = doc.internal.pageSize.getHeight()
   doc.setFontSize(7.5)
   doc.setTextColor(...MUTED)
-  doc.text(`Generated ${formatDate(new Date())} · Enpasent Multiple Agent`, 14, pageHeight - 10)
+  doc.text(`Generated ${formatDate(new Date())} · Enpassent Multiple Agent`, 14, pageHeight - 10)
 
   doc.save(`${claimNumber}-Assessment-Report.pdf`)
 }
@@ -545,8 +544,8 @@ export async function exportPolicyAssessmentReport(
     if (y + need > pageHeightForFlow - 16) { doc.addPage(); y = 20 }
   }
 
-  // Same banded section style as the Policy Report so the two documents
-  // read as one family.
+  // Enpassent logo embedded as base64 so the Policy Report PDF (jsPDF) can draw it
+// synchronously without a network round-trip.
   const sectionHeading = (_n: number, title: string) => {
     ensureRoom(14)
     doc.setFillColor(...NAVY)
@@ -667,7 +666,7 @@ export async function exportPolicyAssessmentReport(
   const pageHeight = doc.internal.pageSize.getHeight()
   doc.setFontSize(7.5)
   doc.setTextColor(...MUTED)
-  doc.text(`Generated ${formatDate(new Date())} · Enpasent Multiple Agent`, 14, pageHeight - 10)
+  doc.text(`Generated ${formatDate(new Date())} · Enpassent Multiple Agent`, 14, pageHeight - 10)
 
   doc.save(`${policyNumber}-PreLoss-Assessment-Report.pdf`)
 }

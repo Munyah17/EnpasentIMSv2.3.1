@@ -59,9 +59,7 @@ export interface CropType {
 }
 
 /** A slide in the public marketing site's home page hero carousel,
- *  managed from Settings -> Website Content instead of hardcoded in the
- *  motions-website repo. See motions-website/api/hero-slides.ts and
- *  motions-website/src/pages/Home.tsx. */
+ *  managed from Settings -> Website Content. */
 export interface HeroSlide {
   id: string
   icon: string
