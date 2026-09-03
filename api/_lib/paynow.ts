@@ -1,3 +1,4 @@
+/// <reference path="../paynow.d.ts" />
 import { Paynow } from 'paynow'
 
 /**
