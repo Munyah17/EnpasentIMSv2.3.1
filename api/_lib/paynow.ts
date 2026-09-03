@@ -37,18 +37,21 @@ export interface PaynowCredentials {
 /**
  * Resolves the integration pair for one currency.
  *
- * Falls back to the currency-less PAYNOW_INTEGRATION_ID/KEY so a deployment
- * that has not yet had the per-currency variables added keeps working
- * exactly as it did — that pair was USD, so only USD inherits it. Letting
- * ZiG fall back too would silently bill ZiG through a USD integration,
- * which is the precise mistake this split exists to prevent.
+ * There is deliberately NO fallback to the old currency-less
+ * PAYNOW_INTEGRATION_ID/KEY. That pair is a different merchant integration
+ * (26481) from the two in use now (USD 16866, ZiG 16867), and a silent
+ * fallback to it would take real money on the wrong integration and only
+ * show up when the takings were reconciled — the exact class of mistake
+ * every other check here exists to prevent.
+ *
+ * Missing credentials therefore fail loudly, naming the variable to set.
+ * A refused payment somebody can fix in a minute beats a collected one
+ * sitting in the wrong merchant account.
  */
 export function paynowCredentials(currency: Currency): PaynowCredentials | null {
   const prefix = currency === 'ZWG' ? 'PAYNOW_ZIG' : 'PAYNOW_USD'
   const integrationId = process.env[`${prefix}_INTEGRATION_ID`]
-    || (currency === 'USD' ? process.env.PAYNOW_INTEGRATION_ID : undefined)
   const integrationKey = process.env[`${prefix}_INTEGRATION_KEY`]
-    || (currency === 'USD' ? process.env.PAYNOW_INTEGRATION_KEY : undefined)
 
   if (!integrationId || !integrationKey) return null
   return { integrationId, integrationKey, currency }

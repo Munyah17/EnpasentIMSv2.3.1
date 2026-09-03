@@ -167,13 +167,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       paynow.returnUrl = body.returnUrl
         || `${origin}/payment/return?ref=${encodeURIComponent(reference)}&currency=${currency}`
 
-      // While an integration is in TEST MODE Paynow rejects the ENTIRE
-      // transaction if authemail is anything but the merchant's own
-      // registered address: "The integration ID is in test mode, so if
-      // authemail is specified then it must match the merchants registered
-      // email address". Confirmed live on 2026-08-29 — every client with an
-      // email on file was failing, silently. So it is withheld until Paynow
-      // approves the integration for live use (PAYNOW_LIVE=true).
+      // The email is a convenience: Paynow uses it to auto-login a
+      // registered customer.
+      //
+      // It used to be withheld unless PAYNOW_LIVE was set, because an
+      // integration in TEST MODE rejects the ENTIRE transaction when
+      // authemail is anything but the merchant's own address ("the
+      // integration ID is in test mode, so if authemail is specified then it
+      // must match the merchants registered email address"). That was
+      // observed on integration 26481, which is not one of the two in use
+      // now. Both 16866 (USD) and 16867 (ZiG) were checked live on
+      // 2026-09-03 with a payer address that is not the merchant's, and both
+      // accepted it.
+      //
+      // The flag is kept as a safety valve for a future integration that IS
+      // in test mode; with it unset the only cost is a missing auto-login,
+      // never a refused payment.
       const payment = (paynowIsLive() && body.email)
         ? paynow.createPayment(reference, body.email)
         : paynow.createPayment(reference)

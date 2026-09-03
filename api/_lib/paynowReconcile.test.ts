@@ -189,14 +189,28 @@ describe('paynow credentials', () => {
     })
   })
 
-  /** The pre-split variables were a USD integration. Letting ZiG inherit them
-   *  would bill ZiG through the USD merchant — the exact confusion the split
-   *  exists to prevent — so only USD falls back. */
-  it('inherits the legacy pair for USD only', () => {
+  /** 26481 is a different merchant integration from the two in use (16866,
+   *  16867). Falling back to it would take real money on the wrong
+   *  integration and only surface at reconciliation, so a missing pair must
+   *  refuse the payment rather than quietly substitute another. */
+  it('never falls back to the old currency-less integration', () => {
     withEnv({ PAYNOW_INTEGRATION_ID: '26481', PAYNOW_INTEGRATION_KEY: 'legacy-key' }, () => {
-      expect(paynowCredentials('USD')).toMatchObject({ integrationId: '26481' })
+      expect(paynowCredentials('USD')).toBeNull()
       expect(paynowCredentials('ZWG')).toBeNull()
-      expect(configuredCurrencies()).toEqual(['USD'])
+      expect(configuredCurrencies()).toEqual([])
+    })
+  })
+
+  /** Guards against the two pairs being crossed — billing USD through the
+   *  ZiG integration is invisible until the money is counted. */
+  it('maps each currency to its own integration', () => {
+    withEnv({
+      PAYNOW_USD_INTEGRATION_ID: '16866', PAYNOW_USD_INTEGRATION_KEY: 'usd-key',
+      PAYNOW_ZIG_INTEGRATION_ID: '16867', PAYNOW_ZIG_INTEGRATION_KEY: 'zig-key',
+    }, () => {
+      expect(paynowCredentials('USD')?.integrationId).toBe('16866')
+      expect(paynowCredentials('ZWG')?.integrationId).toBe('16867')
+      expect(paynowCredentials('USD')?.integrationKey).not.toBe(paynowCredentials('ZWG')?.integrationKey)
     })
   })
 
