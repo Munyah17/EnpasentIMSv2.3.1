@@ -24,7 +24,7 @@ function now() { return new Date().toISOString() }
 // ── Menu Text Templates ────────────────────────────────────────────────
 const MENUS = {
   MAIN: (name?: string) =>
-    `CON Welcome to Tariqify Insurance${name ? `, ${name}` : ''}\n1. Buy Insurance\n2. My Policies\n3. Pay Premium\n4. File a Claim\n5. Check Claim Status\n0. Exit`,
+    `CON Welcome to Enpasent Multiple Agent${name ? `, ${name}` : ''}\n1. Buy Insurance\n2. My Policies\n3. Pay Premium\n4. File a Claim\n5. Check Claim Status\n0. Exit`,
 
   PRODUCTS: (products: Array<{ name: string; premium: number }>) => {
     const lines = products.slice(0, 5).map((p, i) => `${i + 1}. ${p.name} - $${p.premium}/mo`)
@@ -111,7 +111,7 @@ export async function handleUssdAction(
 
   // ── MAIN MENU ────────────────────────────────────────────────────────
   if (sctx.step === 'MAIN') {
-    if (input === '0') { responseText = 'END Thank you for using Tariqify Insurance. Goodbye!'; endSession(session, 'cancelled') }
+    if (input === '0') { responseText = 'END Thank you for using Enpasent Multiple Agent. Goodbye!'; endSession(session, 'cancelled') }
     else if (input === '1') {
       sctx.step = 'PRODUCTS'
       const prods = localStore.products.list().filter(p => p.active)
@@ -208,7 +208,7 @@ export async function handleUssdAction(
         })
         mnoStore.ussdSessions.update(session.id, { policyId: policy.id, customerId: client.id, outcome: `Policy ${policyNumber} created` })
         await emitEvent('policy.created', ctx.partnerId, { policyNumber, msisdn: payload.msisdn, productName: prod.name, premium: prod.premium })
-        responseText = `END Registration Successful!\nPolicy: ${policyNumber}\nProduct: ${prod.name}\nPremium: $${prod.premium}/month\nStatus: ACTIVE\n\nWelcome to Tariqify Insurance!`
+        responseText = `END Registration Successful!\nPolicy: ${policyNumber}\nProduct: ${prod.name}\nPremium: $${prod.premium}/month\nStatus: ACTIVE\n\nWelcome to Enpasent Multiple Agent!`
       } else {
         responseText = 'END Error: Product not found. Please try again.'
       }

@@ -42,8 +42,8 @@ export default function AdminLogin() {
         <div className="login-logo">
           <div className="logo-mark">T</div>
           <div>
-            <div className="logo-name">TARIQIFY IMS</div>
-            <div className="logo-sub">Admin Portal · IPEC Licensed</div>
+            <div className="logo-name">ENPASENT IMS</div>
+            <div className="logo-sub">Admin Portal</div>
           </div>
         </div>
 

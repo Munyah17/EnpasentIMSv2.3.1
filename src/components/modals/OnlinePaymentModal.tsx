@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { Policy } from '../../types'
 import {
   initiateEcoCash, initiatePaynow, getZipitDetails, pollEcoCash, pollPaynow,
-  CURRENCY_LABEL, formatMoney,
+  formatMoney,
 } from '../../lib/paymentGateways'
 import type { PaymentResponse, Currency } from '../../lib/paymentGateways'
 import { db } from '../../lib/db'
@@ -11,6 +11,13 @@ import { recordActivity } from '../../lib/activityLog'
 import { ADMIN_ALERT_NUMBERS } from '../../lib/signupNotifications'
 import { sendSms } from '../../lib/smsService'
 import { taggedReference } from '../../lib/originTag'
+import { convertUsdToZig, isStale, rateAgeLabel } from '../../lib/exchangeRate'
+import type { ExchangeRate } from '../../lib/exchangeRate'
+import {
+  getCurrencySettings, isActive, canDeactivate, DEFAULT_CURRENCY_SETTINGS,
+  CURRENCY_LABELS, CURRENCY_UNAVAILABLE_MESSAGE,
+} from '../../lib/currencies'
+import type { CurrencySettings } from '../../lib/currencies'
 import { useAuth } from '../../contexts/AuthContext'
 import PhoneInput from '../ui/PhoneInput'
 
@@ -80,6 +87,8 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
   const [client, setClient] = useState<{ phone?: string; email?: string } | null>(null)
   const [category, setCategory] = useState('')
   const [periods, setPeriods] = useState(1)
+  const [rate, setRate] = useState<ExchangeRate | null>(null)
+  const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS)
   useEffect(() => {
     db.clients.list().then(({ data }) => {
       setClient(data?.find(c => c.id === policy.clientId) ?? null)
@@ -87,6 +96,10 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
     db.products.list().then(({ data }) => {
       setCategory(data?.find(p => p.id === policy.productId)?.category ?? '')
     })
+    // The rate in force, for showing the ZiG price. The server reads it
+    // again when it charges — this copy is presentation only.
+    db.exchangeRates.current().then(({ data }) => setRate(data))
+    void getCurrencySettings().then(setCurrencySettings)
   }, [policy.clientId, policy.productId])
   const isAgriculture = category === 'agriculture'
   // Tagged so a Paynow transaction or a bank statement line says which app
@@ -100,24 +113,21 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
   const usdTotal = perPeriod * periods
 
   /**
-   * Premiums are denominated in USD, and Paynow has no idea what currency a
-   * number is — the integration decides that. So a ZiG payment cannot just
-   * send the USD figure through the ZiG integration: charging "45" against
-   * a US$45 premium would collect roughly a dollar's worth of ZiG and mark
-   * the month paid.
+   * USD is the base currency: the premium is priced in USD and a ZiG figure
+   * is worked out from the rate an admin last recorded.
    *
-   * There is no exchange rate in this system, and hardcoding one would go
-   * stale within the week. So a ZiG payment asks for the ZiG amount
-   * outright — the person taking the payment knows the day's rate; the app
-   * does not, and guessing is worse than asking. That figure is what gets
-   * recorded as expected_amount, so the webhook's amount check still
-   * validates against something real.
+   * Shown here so the payer sees what they are agreeing to, but never sent
+   * as the amount to charge — api/paynow.ts is given the USD price and
+   * converts it again from the same rate. The browser stating what to
+   * collect in ZiG would be a client able to pay a policy off for pennies.
    */
-  const [zigAmount, setZigAmount] = useState('')
-  const zigTotal = Number(zigAmount)
   const usesZig = method === 'paynow' && currency === 'ZWG'
-  const totalAmount = usesZig ? (Number.isFinite(zigTotal) ? zigTotal : 0) : usdTotal
+  const zigTotal = rate ? convertUsdToZig(usdTotal, rate.rate) : null
+  const totalAmount = usesZig ? (zigTotal ?? 0) : usdTotal
   const displayCurrency: Currency = usesZig ? 'ZWG' : 'USD'
+  // ZiG cannot be charged without a rate: the server refuses it, so the UI
+  // says so up front rather than letting someone reach a failed redirect.
+  const zigBlocked = usesZig && (!rate || !zigTotal)
 
   const req = {
     policyId: policy.id,
@@ -125,7 +135,11 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
     clientName: policy.clientName,
     clientPhone: phone || client?.phone || '',
     clientEmail: client?.email || '',
-    amount: totalAmount,
+    // Always the USD price, never the converted figure. api/paynow.ts
+    // converts it from the rate on record; sending the ZiG total here would
+    // let the browser name what it wants to be charged. EcoCash Instant and
+    // bank transfer are USD rails, so this is right for them too.
+    amount: usdTotal,
     reference: ref,
     currency: method === 'paynow' ? currency : undefined,
   }
@@ -255,10 +269,15 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
     // Only EcoCash Instant needs a number up front — it pushes the prompt to
     // that handset. Paynow collects whatever it needs on its own page.
     if (!phone && method === 'ecocash') { showToast('warning', "Enter the client's phone number — the EcoCash prompt is sent to it."); return }
-    // Blocked rather than defaulted: a ZiG payment sent for the USD figure
-    // would collect a fraction of the premium and still mark it paid.
-    if (usesZig && !(totalAmount > 0)) {
-      showToast('warning', "Enter the ZiG amount to collect — it can't be worked out from the USD premium.")
+    // Blocked rather than defaulted: without a rate, a ZiG payment sent for
+    // the USD figure would collect a fraction of the premium and still mark
+    // it paid. The server refuses it too — this only saves a round trip.
+    if (zigBlocked) {
+      showToast('warning', 'No exchange rate is set, so ZiG cannot be charged. Set it in Settings, or take this payment in USD.')
+      return
+    }
+    if (usesZig && !isActive(currencySettings, 'ZWG')) {
+      showToast('warning', `ZiG: ${CURRENCY_UNAVAILABLE_MESSAGE}.`)
       return
     }
     setStep('processing')
@@ -366,43 +385,59 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
 
               {method === 'paynow' && (
                 <div className="form-group" style={{ marginBottom: 14 }}>
-                  <label>Currency</label>
+                  <label>Pay In</label>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    {(['USD', 'ZWG'] as Currency[]).map(c => (
-                      <button
-                        key={c}
-                        type="button"
-                        className={`btn ${currency === c ? 'btn-primary' : 'btn-secondary'}`}
-                        style={{ flex: 1 }}
-                        onClick={() => setCurrency(c)}
-                      >
-                        {CURRENCY_LABEL[c]}
-                      </button>
-                    ))}
+                    {(['USD', 'ZWG'] as Currency[]).map(c => {
+                      const available = isActive(currencySettings, c)
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          disabled={!available}
+                          title={available ? undefined : CURRENCY_UNAVAILABLE_MESSAGE}
+                          className={`btn ${currency === c ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{
+                            flex: 1,
+                            textDecoration: available ? undefined : 'line-through',
+                            opacity: available ? undefined : 0.55,
+                            cursor: available ? undefined : 'not-allowed',
+                          }}
+                          onClick={() => available && setCurrency(c)}
+                        >
+                          {CURRENCY_LABELS[c]}
+                          {c === 'USD' && <span style={{ fontSize: 10, opacity: 0.75 }}> · base</span>}
+                        </button>
+                      )
+                    })}
                   </div>
-                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>
-                    Each currency is a separate Paynow merchant integration; the client pays in the one selected.
-                  </span>
+                  {/* A currency that is off is shown struck through rather than
+                      removed, so a client expecting it is told why. */}
+                  {canDeactivate('ZWG') && !isActive(currencySettings, 'ZWG') && (
+                    <span style={{ fontSize: 11, color: 'var(--muted)' }}>ZiG: {CURRENCY_UNAVAILABLE_MESSAGE}.</span>
+                  )}
                 </div>
               )}
 
               {usesZig && (
-                <div className="form-group" style={{ marginBottom: 14 }}>
-                  <label>ZiG Amount to Collect</label>
-                  <input
-                    className="form-control"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={zigAmount}
-                    onChange={e => setZigAmount(e.target.value)}
-                    placeholder="e.g. 1250.00"
-                  />
-                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>
-                    The premium is US${usdTotal.toFixed(2)}. Enter its ZiG equivalent at today’s rate — this system
-                    holds no exchange rate, so it cannot convert for you. This exact figure is what Paynow is asked
-                    for, and what the payment is checked against.
-                  </span>
+                <div
+                  className={`info-banner ${zigBlocked ? 'info-banner-warning' : 'info-banner-info'}`}
+                  style={{ borderRadius: 8, padding: '10px 13px', marginBottom: 14, fontSize: 12 }}
+                >
+                  {!rate ? (
+                    <>
+                      <strong>No exchange rate on record.</strong> ZiG payments are refused until an admin sets the
+                      rate in Settings → Exchange Rate. Take this payment in USD, or set the rate first.
+                    </>
+                  ) : (
+                    <>
+                      Charging <strong>ZiG {zigTotal?.toFixed(2)}</strong> — US${usdTotal.toFixed(2)} at ZiG{' '}
+                      {rate.rate.toLocaleString('en-US', { maximumFractionDigits: 4 })} per US$1.
+                      <div style={{ marginTop: 4, opacity: 0.85 }}>
+                        {rateAgeLabel(rate)}
+                        {isStale(rate) && ' — this rate is over a week old. Check it before collecting.'}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 

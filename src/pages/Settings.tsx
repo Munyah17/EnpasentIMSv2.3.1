@@ -4,13 +4,14 @@ import type { ActivePanel } from '../App'
 import NotificationSettings from './NotificationSettings'
 import CommissionSettings from '../components/settings/CommissionSettings'
 import HeroSliderSettings from '../components/settings/HeroSliderSettings'
+import ExchangeRateSettings from '../components/settings/ExchangeRateSettings'
 
 interface Props {
   showToast: (type: ToastMessage['type'], message: string) => void
   setActivePanel: (panel: ActivePanel) => void
 }
 
-type SettingsTab = 'notifications' | 'commission' | 'website'
+type SettingsTab = 'notifications' | 'commission' | 'currency' | 'website'
 
 export default function Settings(props: Props) {
   const [tab, setTab] = useState<SettingsTab>('notifications')
@@ -24,6 +25,9 @@ export default function Settings(props: Props) {
         <button className={`tab${tab === 'commission' ? ' active' : ''}`} onClick={() => setTab('commission')}>
           Agent Commission
         </button>
+        <button className={`tab${tab === 'currency' ? ' active' : ''}`} onClick={() => setTab('currency')}>
+          Currency & Rate
+        </button>
         <button className={`tab${tab === 'website' ? ' active' : ''}`} onClick={() => setTab('website')}>
           Website Content
         </button>
@@ -33,6 +37,7 @@ export default function Settings(props: Props) {
       </p>
       {tab === 'notifications' && <NotificationSettings {...props} />}
       {tab === 'commission' && <CommissionSettings showToast={props.showToast} />}
+      {tab === 'currency' && <ExchangeRateSettings showToast={props.showToast} />}
       {tab === 'website' && <HeroSliderSettings showToast={props.showToast} />}
     </div>
   )

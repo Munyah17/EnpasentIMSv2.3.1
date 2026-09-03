@@ -50,7 +50,7 @@ async function extractLeadsWithAI(apiKey: string, results: GoogleSearchResult[],
   name: string; phone?: string; source: string; productInterest: string; intentScore: number; notes: string
 }>> {
   const resultsText = results.map((r, i) => `${i + 1}. ${r.title}\n${r.link}\n${r.snippet}`).join('\n\n')
-  const prompt = `You are helping a Zimbabwean micro-insurance agency (Tariqify/Motions) find potential customers from web search results. The search was for: "${query}".
+  const prompt = `You are helping a Zimbabwean micro-insurance agency (Enpasent/Motions) find potential customers from web search results. The search was for: "${query}".
 
 Search results:
 ${resultsText}

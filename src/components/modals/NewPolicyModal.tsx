@@ -377,7 +377,7 @@ export default function NewPolicyModal({ onClose, onSave, showToast, initialClie
                 </select>
               </div>
               <div className="form-group">
-                <label>Insurer <span style={{ fontWeight: 400, color: 'var(--muted)' }}>(optional)</span></label>
+                <label>Insurer</label>
                 <InsurerSelect value={insurer} onChange={v => setInsurer(v as Insurer)} options={insurerOptions} />
               </div>
               <div className="form-group">

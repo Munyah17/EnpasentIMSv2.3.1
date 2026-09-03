@@ -61,7 +61,7 @@ export default function AddSystemUserModal({ user, onClose, onSave, onResetPassw
           <div className="form-row">
             <div className="form-group">
               <label>Email Address *</label>
-              <input type="email" className="form-control" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@tariqify.com" />
+              <input type="email" className="form-control" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@enpasent.co.zw" />
             </div>
             <div className="form-group">
               <label>Phone Number</label>

@@ -161,7 +161,7 @@ export default function DeveloperApi({ showToast }: Props) {
     try {
       const { delivered, error } = await sendSystemEmail({
         from: MAILBOXES.admin,
-        fromName: 'Tariqify IMS: Developer API',
+        fromName: 'Enpasent Multiple Agent: Developer API',
         to: newKey.developer.contactEmail,
         subject: `Your API Credentials: ${newKey.environment === 'live' ? 'Live' : 'Sandbox'} Key`,
         body: `Hello,
@@ -176,7 +176,7 @@ The secret key authorizes real requests and must be kept server-side only; never
 Full API documentation is available on request.
 
 Regards,
-Tariqify IMS`,
+Enpasent Multiple Agent`,
       })
       if (delivered) showToast('success', `Credentials sent to ${newKey.developer.contactEmail}.`)
       else showToast('warning', error ?? 'Could not deliver the email; copy the keys manually instead.')

@@ -9,10 +9,10 @@
 export const API_TERMS_VERSION = '2026-08-draft-1'
 
 export const API_TERMS_TEXT = `
-TARIQIFY IMS: DEVELOPER API TERMS OF USE (DRAFT)
+ IMS: DEVELOPER API TERMS OF USE (DRAFT)
 
 1. SCOPE
-This API is private and issued by invitation only. Access is granted solely to the named company/app for the purpose of originating insurance policy sales and related servicing through Tariqify IMS on behalf of the insurer(s) named on each policy.
+This API is private and issued by invitation only. Access is granted solely to the named company/app for the purpose of originating insurance policy sales and related servicing through Enpasent Multiple Agent on behalf of the insurer(s) named on each policy.
 
 2. ROLE AND STANDING
 A Developer integrating via this API acts as an agent of the platform for every policy, client, and payment it creates through its API key, carrying the same duties, expectations, and accountability as an on-the-ground agent, and remunerated on the same commission basis (rate to be confirmed by the directors and communicated separately; not disclosed within the API interface itself).

@@ -24,7 +24,7 @@ const asFile = (blob: Blob) => new File([blob], 'capture.jpg', { type: 'image/jp
 
 describe('exifWriter → exifDate round trip', () => {
   const taken = new Date(2026, 7, 19, 14, 32, 5)
-  const stamp = { taken, make: 'Win32', model: 'back triple camera', software: 'Tariqify IMS Live Capture' }
+  const stamp = { taken, make: 'Win32', model: 'back triple camera', software: 'Enpasent Live Capture' }
 
   it('a stamped capture reads back with its capture time, camera and software', async () => {
     const stamped = await stampJpegExif(bareJpeg(), stamp)
@@ -34,7 +34,7 @@ describe('exifWriter → exifDate round trip', () => {
     expect(signals.dateTaken).toBe('2026-08-19T14:32:05')
     expect(signals.make).toBe('Win32')
     expect(signals.model).toBe('back triple camera')
-    expect(signals.software).toBe('Tariqify IMS Live Capture')
+    expect(signals.software).toBe('Enpasent Live Capture')
   })
 
   it('an unstamped capture has no capture date, which is what blocks it', async () => {

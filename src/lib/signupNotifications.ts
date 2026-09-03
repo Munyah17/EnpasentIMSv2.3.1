@@ -71,11 +71,11 @@ Please note this registration does not itself put any cover in place. One of our
 
   // Staff only. The client's own SMS and email above say nothing about this:
   // every insurer on the list is screened and under agreement, so a
-  // provisional placement is a housekeeping detail for the office, not news
-  // for the client. It goes here because it is the office's queue of people
-  // still to be asked which insurer they want.
+  // The office's queue of people still to be asked which insurer they want.
+  // Says only that the question is outstanding -- naming what the record
+  // currently holds would put an internal arrangement into a text message.
   const provisional = client.insurerProvisional && client.insurer
-    ? ` No insurer chosen; provisionally with ${client.insurer}.`
+    ? ' Insurer still to be confirmed.'
     : ''
   const alert = `Enpasent: New client registered. ${client.name}, ${client.phone || 'no phone'}${registeredBy ? `, by ${registeredBy}` : ''}. No policy yet.${provisional}`
   const recipients = [...new Set([...ADMIN_ALERT_NUMBERS, cfg.superAdminPhone].filter(Boolean))] as string[]

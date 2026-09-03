@@ -168,7 +168,7 @@ export default function CameraCapture({ label, onCapture, onClose, onUseDeviceCa
       taken: takenAt,
       make: navigator.platform || 'Web',
       model: track?.label?.trim() || `${facing === 'user' ? 'Front' : 'Rear'} camera`,
-      software: 'Tariqify IMS Live Capture',
+      software: 'Enpasent IMS Live Capture',
     })
 
     const safeLabel = label.replace(/[^a-z0-9]+/gi, '-').toLowerCase()

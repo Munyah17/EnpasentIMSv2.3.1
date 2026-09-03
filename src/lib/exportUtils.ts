@@ -501,7 +501,7 @@ export async function exportClaimAssessmentReport(
   const pageHeight = doc.internal.pageSize.getHeight()
   doc.setFontSize(7.5)
   doc.setTextColor(...MUTED)
-  doc.text(`Generated ${formatDate(new Date())} · Tariqify IMS`, 14, pageHeight - 10)
+  doc.text(`Generated ${formatDate(new Date())} · Enpasent Multiple Agent`, 14, pageHeight - 10)
 
   doc.save(`${claimNumber}-Assessment-Report.pdf`)
 }
@@ -667,7 +667,7 @@ export async function exportPolicyAssessmentReport(
   const pageHeight = doc.internal.pageSize.getHeight()
   doc.setFontSize(7.5)
   doc.setTextColor(...MUTED)
-  doc.text(`Generated ${formatDate(new Date())} · Tariqify IMS`, 14, pageHeight - 10)
+  doc.text(`Generated ${formatDate(new Date())} · Enpasent Multiple Agent`, 14, pageHeight - 10)
 
   doc.save(`${policyNumber}-PreLoss-Assessment-Report.pdf`)
 }

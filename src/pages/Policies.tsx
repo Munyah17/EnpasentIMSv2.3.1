@@ -128,7 +128,7 @@ export default function Policies({ showToast, initialCategory }: Props) {
           from: MAILBOXES.noreply,
           to: client.email,
           subject: `Your Policy ${data.policyNumber}: Documents Enclosed`,
-          body: `Dear ${client.name},\n\nThank you for choosing us. Your policy ${data.policyNumber} (${data.productName}) is now active. Your policy report is attached for your records.\n\nRegards,\nTariqify IMS`,
+          body: `Dear ${client.name},\n\nThank you for choosing us. Your policy ${data.policyNumber} (${data.productName}) is now active. Your policy report is attached for your records.\n\nRegards,\nEnpasent Multiple Agent`,
           linkedTo: data.id,
           attachmentBase64,
           attachmentFilename: `${data.policyNumber}-Policy-Report.pdf`,

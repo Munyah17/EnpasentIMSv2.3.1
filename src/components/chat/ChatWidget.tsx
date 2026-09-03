@@ -125,7 +125,7 @@ export default function ChatWidget({ prefill }: Props) {
         <div className="chat-panel">
           <div className="chat-panel-header">
             <div>
-              <div className="chat-panel-title">Tariqify Support</div>
+              <div className="chat-panel-title">Enpasent Support</div>
               {session && <div className="chat-panel-sub">{session.status === 'queued' ? 'Waiting for an agent…' : session.status === 'active' ? `Connected${session.assignedName ? `: ${session.assignedName}` : ''}` : 'Chat ended'}</div>}
             </div>
             <button className="modal-close" onClick={() => setOpen(false)}>✕</button>

@@ -111,7 +111,7 @@ export async function reconcilePaynow(
 
   const { data: txn } = await admin
     .from('paynow_transactions')
-    .select('reference, policy_id, expected_amount, status, currency')
+    .select('reference, policy_id, expected_amount, status, currency, usd_amount, rate')
     .eq('reference', reference)
     .maybeSingle()
 
@@ -173,9 +173,18 @@ export async function reconcilePaynow(
 
   // payments.reference is UNIQUE. If another route already recorded this,
   // the insert hits that constraint (23505) and is success, not an error.
+  //
+  // Recorded in the currency it was actually made in. A ZiG payment stays a
+  // ZiG payment and is never converted back to a dollar figure -- doing that
+  // would bake today's rate into a historical record and make the books
+  // disagree with the bank. amount_usd/amount_zwg are generated from these
+  // two columns, so a per-currency total is a sum of one column and the
+  // figures cannot drift apart. `rate` is what this ZiG figure was worked
+  // out at, kept so the price the client was quoted stays reconstructable.
   const { error: payError } = await admin.from('payments').insert({
     reference, policy_id: policy.id, amount: confirmedAmount, method: 'Paynow',
     status: 'completed', payment_date: now.split('T')[0],
+    currency, rate: txn.rate ?? null,
   })
   if (payError && payError.code !== '23505') {
     console.error('paynow reconcile: payment insert failed', reference, payError.message)
@@ -196,7 +205,20 @@ export async function reconcilePaynow(
   const { data: product } = await admin.from('products').select('category').eq('id', policy.product_id).maybeSingle()
   const category = product?.category ?? ''
   const cycleMonths = category === 'agriculture' ? 12 : 1
-  const perPeriod = billablePremium(policy)
+
+  // How many periods this covers.
+  //
+  // The PRICE is converted into the currency charged, never the payment
+  // into USD. Premiums are held in USD and confirmedAmount is in `currency`,
+  // so dividing one by the other directly compares two different
+  // denominations: ZiG 1250 against a US$45 premium reads as 28 periods, and
+  // a single month's payment would advance the policy past two years.
+  //
+  // The rate stored on the transaction is used rather than today's, so a
+  // payment is always counted at what it was actually quoted at.
+  const txnRate = Number(txn.rate)
+  const rate = Number.isFinite(txnRate) && txnRate > 0 ? txnRate : 1
+  const perPeriod = billablePremium(policy) * (currency === 'USD' ? 1 : rate)
   const periodsPaid = perPeriod > 0 ? Math.max(1, Math.round(confirmedAmount / perPeriod)) : 1
 
   const today = new Date()

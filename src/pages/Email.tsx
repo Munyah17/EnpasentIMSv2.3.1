@@ -122,7 +122,7 @@ export default function Email({ showToast }: Props) {
     setSending(true)
     try {
       const fromAddr = (canChooseSender && compose.from) || user?.email || 'noreply@enpassent.co.zw'
-      const fromName = user?.name ?? 'Tariqify IMS'
+      const fromName = user?.name ?? 'Enpasent Multiple Agent'
       let attachmentBase64: string | undefined
       if (attachment) {
         attachmentBase64 = await new Promise<string>((resolve, reject) => {

@@ -677,7 +677,7 @@ function UssdTab({ sessions, partners, reload, showToast }: {
         <div style={{ margin: '0 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
           <div style={{ background: '#0F1C2E', borderRadius: 10, overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 260 }}>
             <div style={{ background: '#4169E1', padding: '6px 12px', fontSize: 10, color: 'rgba(255,255,255,0.7)', display: 'flex', justifyContent: 'space-between' }}>
-              <span>*233# · Tariqify Insurance</span>
+              <span>*233# · Enpasent Multiple Agent</span>
               <span>{simMsisdn}</span>
             </div>
             <div ref={termRef} style={{ flex: 1, padding: 12, overflowY: 'auto', fontFamily: 'monospace', fontSize: 12, color: '#E2E8F0', lineHeight: 1.6, minHeight: 200, maxHeight: 280 }}>

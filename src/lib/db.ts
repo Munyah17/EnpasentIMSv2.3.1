@@ -9,6 +9,7 @@ import { cacheGet, cacheSet } from './offlineCache'
 import { hammingDistance, DUPLICATE_THRESHOLD } from './photoHash'
 import { policyBillablePremium } from './premium'
 import { houseInsurerFirst } from './insurerAssignment'
+import type { ExchangeRate } from './exchangeRate'
 import type {
   AppUser, Client, Product, ClientSafeProduct, Policy, Claim, Payment,
   Ticket, EmailMessage, Lead, FraudCase, Reminder, CautionFlag,
@@ -1993,6 +1994,78 @@ export const settings = {
   },
 }
 
+// ── EXCHANGE RATES ────────────────────────────────────────────────
+// ZiG per 1 USD, entered by an admin and kept as history rather than
+// overwritten: the newest effective_date is in force, and older rows stay
+// so a past conversion can be reconstructed after the rate moves on.
+// Writes are admin-only by RLS. See src/lib/exchangeRate.ts.
+
+function toRate(r: Record<string, unknown>): ExchangeRate {
+  return {
+    id: String(r.id),
+    currency: 'ZWG',
+    rate: Number(r.rate),
+    effectiveDate: String(r.effective_date),
+    source: (r.source === 'estimate' ? 'estimate' : 'manual'),
+    note: (r.note as string) ?? undefined,
+    setBy: (r.set_by as string) ?? undefined,
+    createdAt: String(r.created_at),
+  }
+}
+
+export const exchangeRates = {
+  /** The rate in force: newest effective_date wins. */
+  async current(currency: 'ZWG' = 'ZWG'): Promise<{ data: ExchangeRate | null; error: string | null }> {
+    const { data, error } = await supabase
+      .from('exchange_rates')
+      .select('*')
+      .eq('currency', currency)
+      .order('effective_date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (error) return { data: null, error: error.message }
+    return { data: data ? toRate(data) : null, error: null }
+  },
+
+  /** Newest first, for the history table and the trend chart. */
+  async history(currency: 'ZWG' = 'ZWG', limit = 60): Promise<{ data: ExchangeRate[]; error: string | null }> {
+    const { data, error } = await supabase
+      .from('exchange_rates')
+      .select('*')
+      .eq('currency', currency)
+      .order('effective_date', { ascending: false })
+      .limit(limit)
+    if (error) return { data: [], error: error.message }
+    return { data: (data ?? []).map(toRate), error: null }
+  },
+
+  /**
+   * Records a rate for a date.
+   *
+   * Upserted on (currency, effective_date) so re-entering today's rate
+   * corrects it, rather than adding a second row for the same day that
+   * quietly wins on ordering.
+   */
+  async set(input: {
+    rate: number
+    effectiveDate?: string
+    source?: 'manual' | 'estimate'
+    note?: string
+    setBy?: string
+    currency?: 'ZWG'
+  }): Promise<{ error: string | null }> {
+    const { error } = await supabase.from('exchange_rates').upsert({
+      currency: input.currency ?? 'ZWG',
+      rate: input.rate,
+      effective_date: input.effectiveDate ?? new Date().toISOString().split('T')[0],
+      source: input.source ?? 'manual',
+      note: input.note ?? null,
+      set_by: input.setBy ?? null,
+    }, { onConflict: 'currency,effective_date' })
+    return { error: error?.message ?? null }
+  },
+}
+
 // ── DASHBOARD STATS ──────────────────────────────────────────────
 // Dashboard.tsx used to fetch every row of policies/claims/payments/leads/
 // fraud_cases (each with embedded client/product/profile joins) just to
@@ -2285,7 +2358,7 @@ export const db = {
   policies, clients, products, claims, payments,
   tickets, emails, leads, staff, fraudCases, reminders, cautionFlags, settings, loginAttempts, developerApi,
   customRoles, claimAssessments, policyAssessments, insurers, photoHashes, cropTypes, fraudSignalRules, heroSlides,
-  policyCards,
+  policyCards, exchangeRates,
   dashboardStats, sidebarCounts,
   subscribeToTable,
 }

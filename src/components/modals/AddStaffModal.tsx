@@ -86,7 +86,7 @@ export default function AddStaffModal({ staff, onClose, onSave, onResetPassword 
           <div className="form-row">
             <div className="form-group">
               <label>Email Address *</label>
-              <input type="email" className="form-control" value={email} onChange={e => setEmail(e.target.value)} placeholder="staff@tariqify.com" />
+              <input type="email" className="form-control" value={email} onChange={e => setEmail(e.target.value)} placeholder="staff@enpassent.co.zw" />
             </div>
             <div className="form-group">
               <label>Phone Number</label>

@@ -42,7 +42,7 @@ export default function SuperAdminLogin() {
         <div className="login-logo">
           <div className="logo-mark">T</div>
           <div>
-            <div className="logo-name">TARIQIFY IMS</div>
+            <div className="logo-name">ENPASENT IMS</div>
             <div className="logo-sub">Super Admin Access · Restricted</div>
           </div>
         </div>

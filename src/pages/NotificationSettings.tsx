@@ -196,7 +196,7 @@ export default function NotificationSettings({ showToast }: Props) {
                 type="email"
                 value={settings.fromAddress}
                 onChange={e => update('fromAddress', e.target.value)}
-                placeholder="noreply@tariqify.com"
+                placeholder="noreply@enpassent.co.zw"
               />
             </div>
             <div className="form-group">
@@ -205,7 +205,7 @@ export default function NotificationSettings({ showToast }: Props) {
                 className="form-control"
                 value={settings.fromName}
                 onChange={e => update('fromName', e.target.value)}
-                placeholder="Tariqify IMS"
+                placeholder="Enpasent Multiple Agent"
               />
             </div>
           </div>
@@ -253,7 +253,7 @@ export default function NotificationSettings({ showToast }: Props) {
               rows={4}
               value={settings.signature}
               onChange={e => update('signature', e.target.value)}
-              placeholder="Regards,&#10;Tariqify Insurance Management System"
+              placeholder="Regards,&#10;Enpasent Multiple Agent Management System"
             />
           </div>
         </div>

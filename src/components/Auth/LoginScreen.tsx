@@ -25,8 +25,8 @@ export default function LoginScreen() {
         <div className="login-logo">
           <div className="logo-mark">T</div>
           <div>
-            <div className="logo-name">TARIQIFY IMS</div>
-            <div className="logo-sub">Enpassent Multiple Agent · IPEC Licensed</div>
+            <div className="logo-name">ENPASENT IMS</div>
+            <div className="logo-sub">Enpassent</div>
           </div>
         </div>
 

@@ -7,19 +7,13 @@
  * and a date, and working out which system took the money means guessing
  * from timing. Reconciliation reads this prefix.
  *
- * The tags in use across the estate — keep them distinct, and never reuse
- * one, or the two apps sharing it become impossible to tell apart after
- * the fact:
- *
- *   ENPA  this app — Enpasent IMS (the broker)
- *   MIMS  Motions Tariqify IMS      (imsv3/src/lib/originTag.ts)
- *   MWEB  Motions website           (motions-website/api/create-checkout.ts)
+ * ENPA is this application. Tags already taken by other systems on the same
+ * Paynow account are MIMS and MWEB — never reuse one, or two systems become
+ * impossible to tell apart after the fact.
  *
  * Kept short, uppercase and free of separators a gateway might normalise
  * away; the dash after it is the only separator. Paynow and EcoCash Instant
- * both accept it — EcoCash carries it as clientCorrelator/referenceCode and
- * URL-encodes it for the lookup, and the other two apps have been sending
- * dashed references through the same Paynow account already.
+ * both accept it.
  *
  * Policy numbers are deliberately left untagged: a client reads and quotes
  * those, and they identify cover rather than a movement of money.

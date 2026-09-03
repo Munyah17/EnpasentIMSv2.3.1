@@ -84,3 +84,50 @@ export function paynowVerifier(integrationKey: string): Paynow {
 export function paynowIsLive(): boolean {
   return process.env.PAYNOW_LIVE === 'true'
 }
+
+/**
+ * Units of `currency` per 1 USD. USD is always 1; ZWG is whatever an admin
+ * last recorded in exchange_rates.
+ *
+ * There is no default and no fallback, and that is the whole point. If no
+ * rate is on record this returns null and the payment is refused, because
+ * the alternative -- sending the USD figure through the ZiG integration
+ * unconverted -- would ask for roughly a fortieth of what is owed, collect
+ * it, and mark the premium paid. A refused payment is a phone call; that is
+ * a loss nobody notices until the books are done.
+ *
+ * Read server-side from the service-role client on purpose: the rate decides
+ * what a client is charged, so it must not come from anything the browser
+ * can influence.
+ */
+export async function rateFor(
+  currency: Currency, admin: { from: (t: string) => any }, // eslint-disable-line @typescript-eslint/no-explicit-any
+): Promise<number | null> {
+  if (currency === 'USD') return 1
+  const { data } = await admin
+    .from('exchange_rates')
+    .select('rate')
+    .eq('currency', 'ZWG')
+    .order('effective_date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const rate = Number(data?.rate)
+  return Number.isFinite(rate) && rate > 0 ? rate : null
+}
+
+/**
+ * Whether a currency is currently accepted.
+ *
+ * Checked here as well as in the browser: hiding an option in the UI is a
+ * presentation choice, not a control. Absent settings mean accepted, so
+ * turning a currency off is an explicit act rather than a default.
+ */
+export async function currencyIsActive(
+  currency: Currency, admin: { from: (t: string) => any }, // eslint-disable-line @typescript-eslint/no-explicit-any
+): Promise<boolean> {
+  if (currency === 'USD') return true
+  const { data } = await admin
+    .from('app_settings').select('value').eq('key', 'currency_settings').maybeSingle()
+  const active = (data?.value as { active?: Record<string, boolean> } | undefined)?.active
+  return active?.[currency] !== false
+}

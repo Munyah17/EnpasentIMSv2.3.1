@@ -3,6 +3,7 @@ import { Paynow } from 'paynow'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import {
   paynowCredentials, paynowVerifier, paynowIsLive, configuredCurrencies, isCurrency,
+  rateFor, currencyIsActive,
   type Currency,
 } from './_lib/paynow.js'
 import { reconcilePaynow } from './_lib/paynowReconcile.js'
@@ -31,6 +32,8 @@ import { notifyPaymentOutcome } from './_lib/paymentNotifications.js'
 interface RequestBody {
   action?: string
   reference?: string
+  /** Always the USD price -- the billed amount. Converted server-side when
+   *  charging in another currency; never the charged figure itself. */
   amount?: number
   currency?: string
   description?: string
@@ -144,9 +147,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const reference = String(body.reference ?? '')
-      const amount = Number(body.amount)
+      // Always the USD price. The browser never states what to charge in
+      // another currency -- it sends what is owed in the base currency and
+      // the conversion happens below, from the rate on record. A client that
+      // could name its own ZiG figure could pay off a policy for pennies.
+      const usdAmount = Number(body.amount)
       const policyId = String(body.policyId ?? '')
-      if (!reference || !Number.isFinite(amount) || amount <= 0) {
+      if (!reference || !Number.isFinite(usdAmount) || usdAmount <= 0) {
         return res.status(400).json({ error: 'reference and a positive amount are required.' })
       }
       // Required, not optional: without it the webhook has no record of what
@@ -156,6 +163,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const db = admin()
       if (!db) return res.status(500).json({ error: 'Server is not configured (missing Supabase service credentials).' })
+
+      // Enforced here as well as in the UI, for the same reason the amount is.
+      if (!(await currencyIsActive(currency, db))) {
+        return res.status(503).json({ error: `${currency === 'ZWG' ? 'ZiG' : currency} payments are temporarily unavailable due to maintenance.` })
+      }
+
+      // Prices are held in USD; this works out what to charge in the
+      // currency selected. Refused outright when there is no rate -- see
+      // rateFor().
+      const rate = await rateFor(currency, db)
+      if (rate === null) {
+        return res.status(503).json({ error: 'ZiG payments are unavailable until an exchange rate is set. Set it in Settings, or take this payment in USD.' })
+      }
+      const amount = Math.round(usdAmount * rate * 100) / 100
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return res.status(400).json({ error: 'Could not determine the amount to charge.' })
+      }
 
       // Built as Paynow's Node quickstart documents it: construct with the
       // integration pair, assign the URLs, createPayment, add, send.
@@ -203,9 +227,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // poll URL is stored because it is the only way to ask Paynow about
       // this reference later — without it, a lost webhook leaves a payment
       // that cleared with nothing able to find out.
+      // expected_amount is what Paynow was actually asked for, in `currency`
+      // -- so the webhook's amount check compares ZiG against ZiG. usd_amount
+      // and rate are kept alongside it so the USD price this came from, and
+      // what it was converted at, stay reconstructable after the rate moves.
       const { error: trackError } = await db.from('paynow_transactions').insert({
         reference, policy_id: policyId, expected_amount: amount,
         status: 'pending', currency, poll_url: pollUrl,
+        usd_amount: usdAmount, rate,
       })
       if (trackError) {
         // Does not undo the Paynow transaction, so it is logged rather than
@@ -219,6 +248,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         redirectUrl: String(response.redirectUrl ?? ''),
         pollUrl,
         currency,
+        // What Paynow will actually charge, and what it was converted at, so
+        // the caller records and shows the figure the payer is about to be
+        // asked for rather than the USD it came from.
+        amount,
+        usdAmount,
+        rate,
       })
     }
 
