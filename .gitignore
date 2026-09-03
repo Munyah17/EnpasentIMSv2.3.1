@@ -22,6 +22,21 @@ fix_auth.mjs
 setup_database.mjs
 seed-data.ts
 
+# Local admin/diagnostic scripts. These hardcode the Supabase SERVICE ROLE
+# key, which bypasses RLS entirely -- committing one publishes full database
+# access to a GitHub repo. They were untracked but not ignored, so a single
+# `git add .` would have swept them in. Keep new one-off scripts to these
+# names, or add them here before writing any credential into them.
+add-test-products.js
+check-db.js
+check-paynow-columns.js
+check-paynow-config.js
+check-products-schema.js
+find-user.js
+run-migrations.js
+unlock-admin.js
+verify-migrations.js
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
