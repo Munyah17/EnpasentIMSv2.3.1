@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { sendViaAfrosoft, afrosoftAccepted, normalizeMsisdn, isValidMsisdn } from './_lib/afrosoft.js'
+import { sendViaAfrosoft, afrosoftAccepted, normalizeMsisdn, isValidMsisdn } from './afrosoft.js'
 
 /**
  * Billing reminders, run on the server.
@@ -13,8 +13,9 @@ import { sendViaAfrosoft, afrosoftAccepted, normalizeMsisdn, isValidMsisdn } fro
  * "it works while we're building, then nothing happens when I go home"
  * looks like from the outside.
  *
- * Vercel Cron calls this once a day (see vercel.json). It is the same
- * schedule the browser engine implements:
+ * Vercel Cron calls this once a day, dispatched through api/cron.ts (see
+ * that file's comment for why this lives under _lib rather than as its own
+ * top-level function). It is the same schedule the browser engine implements:
  *
  *   R1  5 days before the last day of the month
  *   R2  1 day before

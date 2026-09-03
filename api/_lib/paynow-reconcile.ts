@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { paynowCredentials, paynowVerifier, isCurrency, type Currency } from './_lib/paynow.js'
-import { reconcilePaynow, type ReconcileOutcome } from './_lib/paynowReconcile.js'
-import { notifyPaymentOutcome } from './_lib/paymentNotifications.js'
+import { paynowCredentials, paynowVerifier, isCurrency, type Currency } from './paynow.js'
+import { reconcilePaynow, type ReconcileOutcome } from './paynowReconcile.js'
+import { notifyPaymentOutcome } from './paymentNotifications.js'
 
 /**
  * The backstop for payments that cleared but were never confirmed here.
@@ -27,6 +27,9 @@ import { notifyPaymentOutcome } from './_lib/paymentNotifications.js'
  * Safe to run as often as the hosting plan allows: it only touches rows
  * still pending, and stops looking at one after ABANDON_AFTER_HOURS, by
  * which point an unpaid checkout is abandoned rather than in flight.
+ *
+ * Run through api/cron.ts, not as its own top-level function — see that
+ * file's comment for why this lives under _lib.
  */
 
 /** Skip transactions younger than this — they are very likely still being
@@ -41,7 +44,7 @@ const ABANDON_AFTER_HOURS = 72
 const MAX_PER_RUN = 200
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Same guard as api/cron-reminders.ts: Vercel Cron sends
+  // Same guard as api/_lib/cron-reminders.ts: Vercel Cron sends
   // `Authorization: Bearer $CRON_SECRET`. Fail closed — an unset secret must
   // refuse everyone rather than admit everyone, since this endpoint moves
   // money onto policies.

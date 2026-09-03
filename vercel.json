@@ -4,6 +4,13 @@
     { "source": "/api/score-claim-fraud", "destination": "/api/ai?action=score-claim-fraud" },
     { "source": "/api/score-lead", "destination": "/api/ai?action=score-lead" },
     { "source": "/api/search-leads", "destination": "/api/ai?action=search-leads" },
+    { "source": "/api/create-account", "destination": "/api/staff-admin?action=create-account" },
+    { "source": "/api/create-api-developer", "destination": "/api/staff-admin?action=create-api-developer" },
+    { "source": "/api/create-api-key", "destination": "/api/staff-admin?action=create-api-key" },
+    { "source": "/api/delete-staff", "destination": "/api/staff-admin?action=delete-staff" },
+    { "source": "/api/reset-staff-password", "destination": "/api/staff-admin?action=reset-staff-password" },
+    { "source": "/api/cron-reminders", "destination": "/api/cron?job=cron-reminders" },
+    { "source": "/api/paynow-reconcile", "destination": "/api/cron?job=paynow-reconcile" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "crons": [
