@@ -379,7 +379,7 @@ function ApiKeysTab({ apiKeys, partners, reload, showToast }: {
   function handleCreate() {
     if (!newKey.partnerId || !newKey.label) { showToast('error', 'Partner and label are required'); return }
     const partner = partners.find(p => p.id === newKey.partnerId)
-    const prefix = `tqfy_${partner?.code.slice(0, 3).toLowerCase() ?? 'unk'}_${Math.random().toString(36).slice(2, 6)}`
+    const prefix = `enpa_${partner?.code.slice(0, 3).toLowerCase() ?? 'unk'}_${Math.random().toString(36).slice(2, 6)}`
     mnoStore.apiKeys.create({
       id: `key-${Date.now()}`, partnerId: newKey.partnerId, partnerName: partner?.name ?? '',
       label: newKey.label, keyPrefix: prefix, environment: newKey.environment,

@@ -8,7 +8,7 @@ import type { InsurerRecord } from '../types'
  * optional -- a signup must never be blocked because the question was not
  * answered yet.
  *
- * When it is left blank the client is provisionally placed with the house
+ * When it is left blank the client is provisionally placed with the default
  * insurer, Motions, so the record has somewhere to sit and staff have
  * something to work from. That assignment is PROVISIONAL and is recorded as
  * such. Two rules follow from that word, and both matter:
@@ -25,21 +25,21 @@ import type { InsurerRecord } from '../types'
  */
 
 /** Matched loosely so renaming the record ("Motions Microinsurance") keeps working. */
-export const HOUSE_INSURER_MATCH = 'motions'
+export const DEFAULT_INSURER_MATCH = 'motions'
 
-export function isHouseInsurer(name: string | undefined | null): boolean {
-  return !!name && name.toLowerCase().includes(HOUSE_INSURER_MATCH)
+export function isDefaultInsurer(name: string | undefined | null): boolean {
+  return !!name && name.toLowerCase().includes(DEFAULT_INSURER_MATCH)
 }
 
-/** The house insurer as it is actually spelled on the insurers table, so the
- *  stored value matches a real record rather than a hardcoded guess. */
-export function findHouseInsurer(list: InsurerRecord[]): InsurerRecord | undefined {
-  return list.find(i => isHouseInsurer(i.name))
+/** The default insurer as it is actually spelled on the insurers table, so
+ *  the stored value matches a real record rather than a hardcoded guess. */
+export function findDefaultInsurer(list: InsurerRecord[]): InsurerRecord | undefined {
+  return list.find(i => isDefaultInsurer(i.name))
 }
 
-/** House insurer first, everything else left as it came (A-Z from the query). */
-export function houseInsurerFirst<T extends { name: string }>(list: T[]): T[] {
-  return [...list.filter(i => isHouseInsurer(i.name)), ...list.filter(i => !isHouseInsurer(i.name))]
+/** Default insurer first, everything else left as it came (A-Z from the query). */
+export function defaultInsurerFirst<T extends { name: string }>(list: T[]): T[] {
+  return [...list.filter(i => isDefaultInsurer(i.name)), ...list.filter(i => !isDefaultInsurer(i.name))]
 }
 
 export interface ResolvedInsurer {
@@ -50,15 +50,15 @@ export interface ResolvedInsurer {
 /**
  * Turns what the form had into what gets stored.
  *
- * A blank selection becomes the house insurer, flagged provisional. If the
- * house insurer is not among the active records it stays blank rather than
+ * A blank selection becomes the default insurer, flagged provisional. If the
+ * default insurer is not among the active records it stays blank rather than
  * being invented -- writing the name of an insurer nobody can currently place
  * business with would be worse than an empty field.
  */
 export function resolveClientInsurer(selected: string, options: InsurerRecord[]): ResolvedInsurer {
   if (selected) return { insurer: selected, insurerProvisional: false }
 
-  const house = findHouseInsurer(options)
-  if (!house) return { insurer: undefined, insurerProvisional: false }
-  return { insurer: house.name, insurerProvisional: true }
+  const fallback = findDefaultInsurer(options)
+  if (!fallback) return { insurer: undefined, insurerProvisional: false }
+  return { insurer: fallback.name, insurerProvisional: true }
 }

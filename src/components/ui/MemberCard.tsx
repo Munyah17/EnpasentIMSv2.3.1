@@ -3,7 +3,7 @@ import type { PolicyCard } from '../../types'
 import type { PolicyMember } from '../../lib/memberNumbers'
 import { MOTIONS_LOGO_PNG_BASE64 } from '../../assets/motionsLogo'
 import { formatDate } from '../../lib/dateUtils'
-import { isHouseInsurer } from '../../lib/insurerAssignment'
+import { isDefaultInsurer } from '../../lib/insurerAssignment'
 
 /**
  * The membership card, at real proportions.
@@ -58,7 +58,7 @@ const MemberCard = forwardRef<HTMLDivElement, Props>(function MemberCard(
   // logo is drawn only when the resolved name really is Motions -- it must
   // never appear, even implicitly, on cover placed with anyone else.
   const resolvedName = companyName || member.insurer || 'Enpassent Multiple Agent'
-  const showHouseLogo = isHouseInsurer(resolvedName)
+  const showHouseLogo = isDefaultInsurer(resolvedName)
 
   // px() keeps every dimension proportional to `scale`, so one layout
   // serves both the small on-screen preview and the full-size export.

@@ -216,7 +216,7 @@ export default function NotificationSettings({ showToast }: Props) {
               type="email"
               value={settings.replyTo}
               onChange={e => update('replyTo', e.target.value)}
-              placeholder="admin@motions.co.zw"
+              placeholder="admin@enpassent.co.zw"
             />
             <p className="notif-settings-desc" style={{ marginTop: 4 }}>
               The From address above is noreply; replies to any outgoing notification land here instead.

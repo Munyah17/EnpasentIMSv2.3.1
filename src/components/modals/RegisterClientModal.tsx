@@ -29,7 +29,7 @@ export default function RegisterClientModal({ onClose, onSave }: Props) {
   const handleSave = () => {
     if (!name || !phone || !nationalId) return
     // Insurer is optional. Left blank, the client is provisionally placed
-    // with the house insurer and flagged so staff know to ask -- registering
+    // with the default insurer and flagged so staff know to ask -- registering
     // a client puts no cover in place, so nothing has been decided for them
     // yet. See src/lib/insurerAssignment.ts.
     const { insurer: assignedInsurer, insurerProvisional } = resolveClientInsurer(insurer, insurerOptions)

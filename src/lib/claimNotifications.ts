@@ -107,11 +107,17 @@ We will keep you informed as this claim progresses. All parties are copied on th
 
 interface StaffContact { email?: string; phone?: string; name: string }
 
-/** Every claims-pipeline stage escalates to the Super Admin (SMS) and the
- *  Motions info mailbox (email CC) — configured phone or not, in addition
- *  to the client and whichever staff member is picking the claim up next. */
-const CLAIMS_ESCALATION_CC_EMAIL = 'info@motions.co.zw'
-
+/**
+ * Every claims-pipeline stage escalates to the Super Admin (SMS), in
+ * addition to the client and whichever staff member is picking the claim up
+ * next.
+ *
+ * The email CC used to be a hardcoded Motions address, unconditionally --
+ * Enpassent is a broker placing business with almost every insurer in
+ * Zimbabwe, so that CC'd Motions on a claim regardless of which insurer
+ * actually held the policy. notifyClaimCreated already does this correctly
+ * with cfg.insurerEmail, the same configurable setting used here now.
+ */
 function notifySuperAdmin(claim: Claim, stageMessage: string) {
   const cfg = getNotifSettings()
   if (cfg.superAdminPhone) {
@@ -127,7 +133,7 @@ export async function notifyClaimIntakeAccepted(claim: Claim, processor: StaffCo
 
   if (client.email) {
     void sendEmail({
-      to: client.email, cc: CLAIMS_ESCALATION_CC_EMAIL, subject, linkedTo: claim.id, folder: 'claims', from: MAILBOXES.claims,
+      to: client.email, cc: cfg.insurerEmail || undefined, subject, linkedTo: claim.id, folder: 'claims', from: MAILBOXES.claims,
       body: `Dear ${claim.clientName},\n\nYour claim ${claim.claimNumber} has been received and accepted for processing.${claimSummaryBlock(claim)}\n\nIt is now with our claims processing team for assessment.${signature(cfg.signature)}`,
     })
   }
@@ -149,7 +155,7 @@ export async function notifyClaimIntakeRejected(claim: Claim): Promise<void> {
   notifySuperAdmin(claim, 'rejected at intake.')
   if (client.email) {
     void sendEmail({
-      to: client.email, cc: CLAIMS_ESCALATION_CC_EMAIL, subject, linkedTo: claim.id, folder: 'claims', from: MAILBOXES.claims,
+      to: client.email, cc: cfg.insurerEmail || undefined, subject, linkedTo: claim.id, folder: 'claims', from: MAILBOXES.claims,
       body: `Dear ${claim.clientName},\n\nWe were unable to accept your claim ${claim.claimNumber} for processing.${claimSummaryBlock(claim)}\n\nPlease contact us if you believe this is in error.${signature(cfg.signature)}`,
     })
   }
@@ -164,7 +170,7 @@ export async function notifyClaimEscalated(claim: Claim, reviewer: StaffContact)
 
   if (client.email) {
     void sendEmail({
-      to: client.email, cc: CLAIMS_ESCALATION_CC_EMAIL, subject, linkedTo: claim.id, folder: 'claims', from: MAILBOXES.claims,
+      to: client.email, cc: cfg.insurerEmail || undefined, subject, linkedTo: claim.id, folder: 'claims', from: MAILBOXES.claims,
       body: `Dear ${claim.clientName},\n\nYour claim ${claim.claimNumber} has completed assessment and is now with our final reviewer for a decision.${claimSummaryBlock(claim)}${signature(cfg.signature)}`,
     })
   }
@@ -188,7 +194,7 @@ export async function notifyClaimFinalDecision(claim: Claim): Promise<void> {
 
   if (client.email) {
     void sendEmail({
-      to: client.email, cc: CLAIMS_ESCALATION_CC_EMAIL, subject, linkedTo: claim.id, folder: 'claims', from: MAILBOXES.claims,
+      to: client.email, cc: cfg.insurerEmail || undefined, subject, linkedTo: claim.id, folder: 'claims', from: MAILBOXES.claims,
       body: `Dear ${claim.clientName},\n\nA final decision has been made on your claim ${claim.claimNumber}: ${approved ? 'APPROVED' : 'DECLINED'}.${claimSummaryBlock(claim)}\n\n${approved ? 'Payment will be processed shortly.' : 'If you have questions about this decision, please contact us.'}${signature(cfg.signature)}`,
     })
   }

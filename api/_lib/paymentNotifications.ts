@@ -62,7 +62,7 @@ async function mail(origin: string, input: { to: string; subject: string; text: 
     await fetch(`${origin}/api/send-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: 'noreply@motions.co.zw', fromName: BRAND_NAME, ...input }),
+      body: JSON.stringify({ from: 'noreply@enpassent.co.zw', fromName: BRAND_NAME, ...input }),
     })
   } catch { /* as above */ }
 }

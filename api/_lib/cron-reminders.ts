@@ -98,7 +98,7 @@ function billablePremium(policy: PolicyRow): number {
 
 // ── Delivery ───────────────────────────────────────────────────────
 
-const SIGNATURE = 'Regards,\nMotions Microinsurance\nwww.motions.co.zw'
+const SIGNATURE = 'Regards,\nEnpasent Multiple Agent\nwww.enpassent.co.zw'
 
 /** Reuses this deployment's own SMTP-backed mail function rather than
  *  standing up a second email integration. Best-effort: a bounced
@@ -108,7 +108,7 @@ async function sendMail(origin: string, input: { to: string; subject: string; te
     const res = await fetch(`${origin}/api/send-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: 'noreply@enpassent.co.zw', fromName: 'Motions Microinsurance', ...input }),
+      body: JSON.stringify({ from: 'noreply@enpassent.co.zw', fromName: 'Enpasent Multiple Agent', ...input }),
     })
     return res.ok
   } catch { return false }

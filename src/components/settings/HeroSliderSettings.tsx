@@ -91,7 +91,7 @@ export default function HeroSliderSettings({ showToast }: Props) {
       <div className="card">
         <div className="card-header"><span className="card-title">Home Page Hero Slider</span></div>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14 }}>
-          Slides shown on motions.co.zw's home page, in order. The icon picks which graphic is used (🛡 shield, 🌾 crop, 🏥 health, 👨‍👩‍👧‍👦 family, 🚗 motor — anything else falls back to a generic shield). Changes go live within a few minutes.
+          Slides shown on enpassent.co.zw's home page, in order. The icon picks which graphic is used (🛡 shield, 🌾 crop, 🏥 health, 👨‍👩‍👧‍👦 family, 🚗 motor — anything else falls back to a generic shield). Changes go live within a few minutes.
         </p>
         {sorted.length === 0 ? (
           <div className="empty-state">No slides yet.</div>

@@ -160,8 +160,8 @@ export async function chargeEip(input: ChargeInput): Promise<{
       countryCode: 'ZW',
       terminalID: process.env.EIP_TERMINAL_ID || 'IMS001',
       location: 'Harare',
-      superMerchantName: process.env.EIP_SUPER_MERCHANT_NAME || 'Motions Microinsurance',
-      merchantName: process.env.EIP_MERCHANT_NAME || 'Motions Microinsurance',
+      superMerchantName: process.env.EIP_SUPER_MERCHANT_NAME || 'Enpasent Multiple Agent',
+      merchantName: process.env.EIP_MERCHANT_NAME || 'Enpasent Multiple Agent',
     }),
   })
 

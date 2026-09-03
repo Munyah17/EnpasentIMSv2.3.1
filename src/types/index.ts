@@ -123,7 +123,7 @@ export interface Client {
   occupation?: string
   insurer?: Insurer
   /** True when nobody picked an insurer and the client was provisionally
-   *  placed with the house insurer. Staff-facing only: it marks a client who
+   *  placed with the default insurer. Staff-facing only: it marks a client who
    *  still has to be asked, and it is never allowed to decide the insurer on
    *  a policy. See src/lib/insurerAssignment.ts. */
   insurerProvisional?: boolean

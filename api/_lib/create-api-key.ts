@@ -59,8 +59,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!developer) return res.status(404).json({ error: 'Developer not found.' })
 
   const environment: 'sandbox' | 'live' = body.environment === 'sandbox' ? 'sandbox' : 'live'
-  const rawKey = `tqfy_sk_${environment}_${crypto.randomBytes(24).toString('hex')}`
-  const publishableKey = `tqfy_pk_${environment}_${crypto.randomBytes(12).toString('hex')}`
+  const rawKey = `enpa_sk_${environment}_${crypto.randomBytes(24).toString('hex')}`
+  const publishableKey = `enpa_pk_${environment}_${crypto.randomBytes(12).toString('hex')}`
   const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex')
   const keyPrefix = rawKey.slice(0, 22)
 

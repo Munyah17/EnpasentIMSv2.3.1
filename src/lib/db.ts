@@ -8,7 +8,7 @@ import { health } from './health'
 import { cacheGet, cacheSet } from './offlineCache'
 import { hammingDistance, DUPLICATE_THRESHOLD } from './photoHash'
 import { policyBillablePremium } from './premium'
-import { houseInsurerFirst } from './insurerAssignment'
+import { defaultInsurerFirst } from './insurerAssignment'
 import type { ExchangeRate } from './exchangeRate'
 import type {
   AppUser, Client, Product, ClientSafeProduct, Policy, Claim, Payment,
@@ -739,7 +739,7 @@ export const insurers = {
       () => supabase.from('insurers').select('*').order('name'),
       d => Array.isArray(d),
     )
-    if (ok && data) return { data: houseInsurerFirst((data as Record<string, unknown>[]).map(toInsurer)), error: null }
+    if (ok && data) return { data: defaultInsurerFirst((data as Record<string, unknown>[]).map(toInsurer)), error: null }
     return { data: [] as InsurerRecord[], error: null }
   },
 

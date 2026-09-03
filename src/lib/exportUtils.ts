@@ -10,7 +10,7 @@ import { getDocumentUrl } from './storage'
 import { reverseGeocode } from './geocode'
 import { policyBillablePremium, billableHeadCount } from './premium'
 import { holderMemberNumber, dependantMemberNumber } from './memberNumbers'
-import { isHouseInsurer } from './insurerAssignment'
+import { isDefaultInsurer } from './insurerAssignment'
 
 function triggerDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
@@ -73,7 +73,7 @@ function money(amount: number): string {
 }
 
 /** Shared masthead for official client-facing documents: real logo (or, for
- *  cover placed with anyone but the house insurer, a plain text mark --
+ *  cover placed with anyone but the default insurer, a plain text mark --
  *  Enpassent places business with almost every insurer in Zimbabwe, so this
  *  logo must never appear on a document for cover it does not itself
  *  underwrite) top-left, Head Office contact block right-aligned. Only
@@ -140,7 +140,7 @@ async function buildPolicyReportDoc(policy: Policy, client: Client, category: st
   // actually underwrites this policy. For anyone else's cover the letterhead
   // reads Enpassent -- the broker issuing the document -- never the house
   // insurer's mark on business that isn't its own.
-  const isHouseCover = isHouseInsurer(policy.insurer)
+  const isHouseCover = isDefaultInsurer(policy.insurer)
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
   const cfg = getNotifSettings()
@@ -322,7 +322,7 @@ async function buildPolicyReportDoc(policy: Policy, client: Client, category: st
   y += terms.length * 4 + 4
   // This document is issued by Enpassent regardless of who underwrites the
   // policy -- the underwriter is already named above -- so the copyright
-  // line is never the house insurer's by default.
+  // line is never the default insurer's by default.
   doc.text('Copyright © Enpassent Multiple Agent. All rights reserved.', 14, y)
 
   return doc
@@ -511,7 +511,7 @@ export async function exportClaimAssessmentReport(
 export async function exportPolicyAssessmentReport(
   assessment: PolicyAssessment, policyNumber: string, clientName: string,
   /** The policy's own insurer, when the caller has it to hand. Only when
-   *  this really is the house insurer does the letterhead carry its logo --
+   *  this really is the default insurer does the letterhead carry its logo --
    *  a report for cover placed with anyone else, or with nobody chosen yet,
    *  reads Enpassent instead. */
   insurerName?: string,
@@ -522,7 +522,7 @@ export async function exportPolicyAssessmentReport(
   const doc = new jsPDF()
   const pageWidth = doc.internal.pageSize.getWidth()
   const cfg = getNotifSettings()
-  const isHouseCover = isHouseInsurer(insurerName)
+  const isHouseCover = isDefaultInsurer(insurerName)
 
   drawLetterhead(doc, pageWidth, isHouseCover ? MOTIONS_LOGO_PNG_BASE64 : null, isHouseCover && insurerName ? insurerName : 'Enpassent Multiple Agent', cfg)
 
