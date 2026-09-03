@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { CURRENCIES, paynowCredentials, paynowVerifier, isCurrency, type Currency } from './_lib/paynow.js'
 import { reconcilePaynow } from './_lib/paynowReconcile.js'
+import { notifyPaymentOutcome } from './_lib/paymentNotifications.js'
 
 /**
  * Paynow's resultUrl callback — a real webhook, not client-side polling.
@@ -142,6 +143,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (result.outcome === 'write-failed') {
     return res.status(500).json({ ok: false, error: 'Could not record payment.' })
   }
+
+  // Awaited, not fired and forgotten: a serverless function is frozen the
+  // moment it responds, so a floating promise here would be killed mid-send
+  // and the receipt would simply never arrive. Notification failures are
+  // swallowed inside, so this cannot turn a settled payment into a 500.
+  await notifyPaymentOutcome(admin, result, `https://${req.headers.host}`)
 
   const credited = result.outcome === 'paid' || result.outcome === 'already'
   return res.status(200).json({ ok: credited, outcome: result.outcome })

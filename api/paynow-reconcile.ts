@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { paynowCredentials, paynowVerifier, isCurrency, type Currency } from './_lib/paynow.js'
 import { reconcilePaynow, type ReconcileOutcome } from './_lib/paynowReconcile.js'
+import { notifyPaymentOutcome } from './_lib/paymentNotifications.js'
 
 /**
  * The backstop for payments that cleared but were never confirmed here.
@@ -95,9 +96,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Worth naming in the response: these are payments that had already
       // succeeded at Paynow and would otherwise have stayed invisible here.
       if (result.outcome === 'paid') recovered.push(reference)
-      if (result.outcome === 'mismatch') {
-        console.error(`paynow-reconcile: mismatch parked ref=${reference}`)
-      }
+
+      // The receipt for a recovered payment, and the office alert for a
+      // mismatch nobody has seen yet. This sweep is the last route to run,
+      // so for a payer who never came back it is the only thing that will
+      // ever tell either of them. Awaited so the function is not frozen
+      // mid-send.
+      await notifyPaymentOutcome(admin, result, `https://${req.headers.host}`)
     } catch (e) {
       // One unreachable reference must not abandon the rest of the sweep.
       console.error('paynow-reconcile: failed for reference', reference, e)

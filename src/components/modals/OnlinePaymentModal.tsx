@@ -214,6 +214,19 @@ export default function OnlinePaymentModal({ policy, onClose, onSuccess, showToa
       date: new Date().toISOString().split('T')[0],
     })
 
+    // The client's receipt for the rails that settle here: EcoCash Instant
+    // (confirmed by the poll above) and a bank transfer a staff member has
+    // just validated. Paynow never reaches this function -- it hands the
+    // whole page over and is receipted server-side by whichever reconcile
+    // route settles it -- so this cannot double up on that one.
+    const clientPhone = client?.phone ?? ''
+    if (clientPhone) {
+      void sendSms(
+        clientPhone,
+        `Enpasent Multiple Agent: Thank you ${policy.clientName.split(' ')[0]}. We have received ${formatMoney(totalAmount, displayCurrency)} for policy ${policy.policyNumber}. Ref ${ref}.`,
+      ).catch(() => { /**/ })
+    }
+
     if (user) {
       void recordActivity({
         action: validatedManually ? 'payment.validated' : 'payment.recorded',

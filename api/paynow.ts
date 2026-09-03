@@ -6,6 +6,7 @@ import {
   type Currency,
 } from './_lib/paynow.js'
 import { reconcilePaynow } from './_lib/paynowReconcile.js'
+import { notifyPaymentOutcome } from './_lib/paymentNotifications.js'
 
 /**
  * Paynow, through Paynow's own SDK.
@@ -102,6 +103,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         amount: Number(rawAmount),
         paynowReference: (status as { paynowReference?: string } | null)?.paynowReference ?? null,
       })
+      // Awaited: this function is frozen once it responds, so a floating
+      // promise would be killed mid-send. Only the route that actually made
+      // the transition sends anything, so this cannot duplicate the
+      // webhook's receipt.
+      await notifyPaymentOutcome(db, result, origin)
       return res.status(200).json(result)
     }
 

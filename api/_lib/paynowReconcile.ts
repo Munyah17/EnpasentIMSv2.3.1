@@ -58,6 +58,15 @@ export interface ReconcileResult {
   confirmedAmount?: number
   currency?: string
   note?: string
+  /**
+   * True when this call found the transaction already in its final state
+   * rather than putting it there.
+   *
+   * Three routes reconcile the same reference, so without this a client
+   * would be texted a receipt once per route. Only the call that actually
+   * made the transition notifies anybody.
+   */
+  alreadyHandled?: boolean
 }
 
 /** Paynow reports a delivered-goods flow as "awaiting delivery"; for an
@@ -118,8 +127,10 @@ export async function reconcilePaynow(
   const base = { reference, expectedAmount, confirmedAmount, currency }
 
   // Terminal already. Re-running must be a no-op, not a second credit.
-  if (txn.status === 'paid') return { ...base, outcome: 'already' }
-  if (txn.status === 'mismatch') return { ...base, outcome: 'mismatch', note: 'Already parked for review.' }
+  if (txn.status === 'paid') return { ...base, outcome: 'already', alreadyHandled: true }
+  if (txn.status === 'mismatch') {
+    return { ...base, outcome: 'mismatch', note: 'Already parked for review.', alreadyHandled: true }
+  }
 
   if (isFailed(status)) {
     await admin.from('paynow_transactions')
@@ -179,7 +190,7 @@ export async function reconcilePaynow(
     // 23505 — another route inserted this payment and already advanced the
     // policy for it. Doing it again would move next_payment_date twice for
     // one premium.
-    return { ...base, outcome: 'already' }
+    return { ...base, outcome: 'already', alreadyHandled: true }
   }
 
   const { data: product } = await admin.from('products').select('category').eq('id', policy.product_id).maybeSingle()
