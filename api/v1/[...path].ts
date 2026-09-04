@@ -91,9 +91,6 @@ function scopeFor(resource: string, method: string): string | null {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.query.__debug) {
-    return res.status(200).json({ query: req.query, url: req.url })
-  }
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type')
@@ -117,7 +114,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!supabaseUrl || !serviceKey) return res.status(500).json({ error: 'Server is not configured.' })
   const admin = createClient(supabaseUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
 
-  const segments = ([] as string[]).concat(req.query.path as string | string[] ?? []).filter(Boolean)
+  // Parsed straight from the URL rather than req.query.path -- on this
+  // deployment, Vercel hands the catch-all segment back under the literal
+  // query key "...path" (dots included), not "path", so req.query.path was
+  // always undefined and every call fell through to "Unknown endpoint."
+  // regardless of what was actually requested. Confirmed live, not
+  // guessed: a temporary debug probe echoing req.query showed
+  // {"...path":"products"} for a request to /api/v1/products. Parsing the
+  // URL directly sidesteps that key-naming quirk entirely, whatever
+  // Vercel's platform is doing on the query-object side.
+  const pathname = (req.url ?? '').split('?')[0]
+  const afterV1 = pathname.replace(/^\/api\/v1\/?/, '')
+  const segments = afterV1.split('/').filter(Boolean)
   const path = segments.join('/')
   const resource = segments[0] ?? ''
   const method = req.method ?? 'GET'
