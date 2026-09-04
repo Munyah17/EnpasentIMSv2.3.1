@@ -77,6 +77,11 @@ async function logRequest(
 
 function scopeFor(resource: string, method: string): string | null {
   if (resource === 'products' && method === 'GET') return 'products:read'
+  // Non-sensitive branding config (payment gateway banner images), managed
+  // from Settings and consumed by enpassentims-website. Reuses products:read
+  // rather than adding a new scope enum for one read-only, low-stakes
+  // resource — every key that can list products can read this too.
+  if (resource === 'config' && method === 'GET') return 'products:read'
   if (resource === 'quotes' && method === 'POST') return 'quotes:read'
   if (resource === 'clients' && method === 'POST') return 'clients:write'
   if (resource === 'policies' && method === 'POST') return 'policies:write'
@@ -174,6 +179,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (resource === 'products' && method === 'GET') {
       result = await listProducts(admin)
+    } else if (resource === 'config' && method === 'GET') {
+      result = await getPublicConfig(admin)
     } else if (resource === 'quotes' && method === 'POST') {
       result = await getQuote(admin, body)
     } else if (resource === 'clients' && method === 'POST') {
@@ -218,6 +225,25 @@ async function listProducts(admin: SupabaseClient) {
         waitingPeriodDays: p.waiting_period_days, minAge: p.min_age, maxAge: p.max_age,
         features: p.features, description: p.description,
       })),
+    },
+  }
+}
+
+/**
+ * Non-sensitive branding config, set from Settings → Payment Banners (admin
+ * only, same app_settings row every other Settings tab writes through) and
+ * read here by enpassentims-website. Missing settings, or a settings read
+ * that fails outright, both just mean "no banner yet" -- a storefront
+ * falling back to its own placeholder is never worth a 500 over.
+ */
+async function getPublicConfig(admin: SupabaseClient) {
+  const { data } = await admin.from('app_settings').select('value').eq('key', 'payment_gateway_banners').maybeSingle()
+  const value = (data?.value ?? {}) as { ecocash?: string; paynow?: string }
+  return {
+    status: 200,
+    body: {
+      ecocashBannerUrl: value.ecocash || null,
+      paynowBannerUrl: value.paynow || null,
     },
   }
 }
