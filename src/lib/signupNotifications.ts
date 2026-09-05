@@ -9,13 +9,13 @@ import { db } from './db'
  * Fires the moment a policy is registered, by whatever route -- an agent in
  * the office, or a self-service checkout on the public site.
  *
- * Both the new client and the Enpassent office are told immediately: the
+ * Both the new client and the Enpasent office are told immediately: the
  * client gets confirmation of what was registered, and the office gets a
  * heads-up they can act on without opening the system.
  *
- * Enpassent is the broker the client actually deals with -- it places
+ * Enpasent is the broker the client actually deals with -- it places
  * business with almost every insurer in Zimbabwe, Motions included -- so
- * every client-facing message here speaks as Enpassent. Which insurer ends
+ * every client-facing message here speaks as Enpasent. Which insurer ends
  * up carrying the risk is a separate fact, shown on the policy itself, never
  * baked into the greeting.
  *
@@ -55,11 +55,11 @@ export async function notifyClientRegistered(client: Client, registeredBy?: stri
   if (client.email) {
     void sendEmail({
       to: client.email,
-      subject: 'Welcome to Enpassent Multiple Agent',
+      subject: 'Welcome to Enpasent Multiple Agent',
       from: MAILBOXES.noreply,
       body: `Dear ${client.name},
 
-Your details have been registered with Enpassent Multiple Agent.
+Your details have been registered with Enpasent Multiple Agent.
 
 Name:        ${client.name}
 National ID: ${client.nationalId || 'not given'}
@@ -104,11 +104,11 @@ export async function notifyPolicyRegistered(policy: Policy, client: Client): Pr
   if (client.email) {
     void sendEmail({
       to: client.email,
-      subject: `Policy ${policy.policyNumber} registered: welcome to Enpassent Multiple Agent`,
+      subject: `Policy ${policy.policyNumber} registered: welcome to Enpasent Multiple Agent`,
       from: MAILBOXES.noreply,
       body: `Dear ${client.name},
 
-Thank you for choosing Enpassent Multiple Agent. Your policy has been registered.
+Thank you for choosing Enpasent Multiple Agent. Your policy has been registered.
 
 Policy Number:  ${policy.policyNumber}
 Product:        ${policy.productName}${policy.insurer ? `\nInsurer:        ${policy.insurer}` : ''}

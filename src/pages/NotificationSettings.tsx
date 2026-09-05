@@ -67,7 +67,7 @@ export default function NotificationSettings({ showToast }: Props) {
             <span className="card-title">🏢 Insurer Notifications</span>
           </div>
           <p className="notif-settings-desc">
-            A single mailbox that gets copied on every new policy. Enpassent places business with
+            A single mailbox that gets copied on every new policy. Enpasent places business with
             almost every insurer in Zimbabwe, so this is not any one underwriter -- which insurer
             actually carries a given policy is set on the policy itself, not here.
           </p>

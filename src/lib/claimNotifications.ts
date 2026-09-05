@@ -113,7 +113,7 @@ interface StaffContact { email?: string; phone?: string; name: string }
  * next.
  *
  * The email CC used to be a hardcoded Motions address, unconditionally --
- * Enpassent is a broker placing business with almost every insurer in
+ * Enpasent is a broker placing business with almost every insurer in
  * Zimbabwe, so that CC'd Motions on a claim regardless of which insurer
  * actually held the policy. notifyClaimCreated already does this correctly
  * with cfg.insurerEmail, the same configurable setting used here now.

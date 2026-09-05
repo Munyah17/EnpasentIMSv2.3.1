@@ -1038,7 +1038,10 @@ async function applyCompletedPaymentToPolicy(policyId: string, amountPaid: numbe
   // periodsPaid for exactly that reason.
   let status = policy.status
   if (periodsPaid >= 1) {
-    if (policy.status === 'lapsed') status = category === 'agriculture' ? 'active' : 'waiting_period'
+    // 'pending' (every Developer API / website signup starts here) is
+    // completed by its first real payment exactly like reinstating a
+    // 'lapsed' one -- see the matching comment in api/_lib/paynowReconcile.ts.
+    if (policy.status === 'lapsed' || policy.status === 'pending') status = category === 'agriculture' ? 'active' : 'waiting_period'
     else if (category === 'agriculture' && policy.status === 'waiting_period') status = 'active'
   }
 

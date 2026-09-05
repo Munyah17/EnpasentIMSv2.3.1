@@ -264,7 +264,7 @@ function SidebarHeader({ onClose }: { onClose: () => void }) {
       <div className="sidebar-logo-mark">T</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="sidebar-logo-name">ENPASENT IMS</div>
-        <div className="sidebar-logo-sub">Enpassent Multiple Agent</div>
+        <div className="sidebar-logo-sub">Enpasent Multiple Agent</div>
       </div>
       <button className="sidebar-close-btn" onClick={onClose} aria-label="Close sidebar">✕</button>
     </div>

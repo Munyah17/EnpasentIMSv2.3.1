@@ -74,7 +74,7 @@ function money(amount: number): string {
 
 /** Shared masthead for official client-facing documents: real logo (or, for
  *  cover placed with anyone but the default insurer, a plain text mark --
- *  Enpassent places business with almost every insurer in Zimbabwe, so this
+ *  Enpasent places business with almost every insurer in Zimbabwe, so this
  *  logo must never appear on a document for cover it does not itself
  *  underwrite) top-left, Head Office contact block right-aligned. Only
  *  prints what's actually configured (Settings -> Notifications -> Company
@@ -138,7 +138,7 @@ async function buildPolicyReportDoc(policy: Policy, client: Client, category: st
   const insurerName = policy.insurer ?? 'the insurer'
   // The logo (and the letterhead's own name) show Motions only when Motions
   // actually underwrites this policy. For anyone else's cover the letterhead
-  // reads Enpassent -- the broker issuing the document -- never the house
+  // reads Enpasent -- the broker issuing the document -- never the house
   // insurer's mark on business that isn't its own.
   const isHouseCover = isDefaultInsurer(policy.insurer)
   const pageWidth = doc.internal.pageSize.getWidth()
@@ -149,7 +149,7 @@ async function buildPolicyReportDoc(policy: Policy, client: Client, category: st
     if (y + need > pageHeight - 16) { doc.addPage(); y = 20 }
   }
 
-  drawLetterhead(doc, pageWidth, isHouseCover ? MOTIONS_LOGO_PNG_BASE64 : null, isHouseCover ? insurerName : 'Enpassent Multiple Agent', cfg)
+  drawLetterhead(doc, pageWidth, isHouseCover ? MOTIONS_LOGO_PNG_BASE64 : null, isHouseCover ? insurerName : 'Enpasent Multiple Agent', cfg)
 
   let y = 28
   doc.setFontSize(9.5)
@@ -315,15 +315,15 @@ async function buildPolicyReportDoc(policy: Policy, client: Client, category: st
   doc.text('Disclaimer:', 14, y)
   y += 4
   const terms = doc.splitTextToSize(
-    `Terms and Conditions apply, and are subject to the full Policy Terms and Conditions of ${insurerName}, available from Enpassent Multiple Agent on request. Cover incepts on the start date above, subject to any applicable waiting period. Claims must be reported as soon as reasonably possible and are subject to verification. Premiums must be kept up to date for cover to remain in force; a lapsed policy may require reinstatement. This document is a summary and does not itself constitute the full policy contract.`,
+    `Terms and Conditions apply, and are subject to the full Policy Terms and Conditions of ${insurerName}, available from Enpasent Multiple Agent on request. Cover incepts on the start date above, subject to any applicable waiting period. Claims must be reported as soon as reasonably possible and are subject to verification. Premiums must be kept up to date for cover to remain in force; a lapsed policy may require reinstatement. This document is a summary and does not itself constitute the full policy contract.`,
     pageWidth - 28,
   )
   doc.text(terms, 14, y)
   y += terms.length * 4 + 4
-  // This document is issued by Enpassent regardless of who underwrites the
+  // This document is issued by Enpasent regardless of who underwrites the
   // policy -- the underwriter is already named above -- so the copyright
   // line is never the default insurer's by default.
-  doc.text('Copyright © Enpassent Multiple Agent. All rights reserved.', 14, y)
+  doc.text('Copyright © Enpasent Multiple Agent. All rights reserved.', 14, y)
 
   return doc
 }
@@ -500,7 +500,7 @@ export async function exportClaimAssessmentReport(
   const pageHeight = doc.internal.pageSize.getHeight()
   doc.setFontSize(7.5)
   doc.setTextColor(...MUTED)
-  doc.text(`Generated ${formatDate(new Date())} · Enpassent Multiple Agent`, 14, pageHeight - 10)
+  doc.text(`Generated ${formatDate(new Date())} · Enpasent Multiple Agent`, 14, pageHeight - 10)
 
   doc.save(`${claimNumber}-Assessment-Report.pdf`)
 }
@@ -513,7 +513,7 @@ export async function exportPolicyAssessmentReport(
   /** The policy's own insurer, when the caller has it to hand. Only when
    *  this really is the default insurer does the letterhead carry its logo --
    *  a report for cover placed with anyone else, or with nobody chosen yet,
-   *  reads Enpassent instead. */
+   *  reads Enpasent instead. */
   insurerName?: string,
 ) {
   const [{ jsPDF }, { MOTIONS_LOGO_PNG_BASE64 }] = await Promise.all([
@@ -524,7 +524,7 @@ export async function exportPolicyAssessmentReport(
   const cfg = getNotifSettings()
   const isHouseCover = isDefaultInsurer(insurerName)
 
-  drawLetterhead(doc, pageWidth, isHouseCover ? MOTIONS_LOGO_PNG_BASE64 : null, isHouseCover && insurerName ? insurerName : 'Enpassent Multiple Agent', cfg)
+  drawLetterhead(doc, pageWidth, isHouseCover ? MOTIONS_LOGO_PNG_BASE64 : null, isHouseCover && insurerName ? insurerName : 'Enpasent Multiple Agent', cfg)
 
   let y = 28
   doc.setFontSize(9.5)
@@ -544,7 +544,7 @@ export async function exportPolicyAssessmentReport(
     if (y + need > pageHeightForFlow - 16) { doc.addPage(); y = 20 }
   }
 
-  // Enpassent logo embedded as base64 so the Policy Report PDF (jsPDF) can draw it
+  // Enpasent logo embedded as base64 so the Policy Report PDF (jsPDF) can draw it
 // synchronously without a network round-trip.
   const sectionHeading = (_n: number, title: string) => {
     ensureRoom(14)
@@ -666,7 +666,7 @@ export async function exportPolicyAssessmentReport(
   const pageHeight = doc.internal.pageSize.getHeight()
   doc.setFontSize(7.5)
   doc.setTextColor(...MUTED)
-  doc.text(`Generated ${formatDate(new Date())} · Enpassent Multiple Agent`, 14, pageHeight - 10)
+  doc.text(`Generated ${formatDate(new Date())} · Enpasent Multiple Agent`, 14, pageHeight - 10)
 
   doc.save(`${policyNumber}-PreLoss-Assessment-Report.pdf`)
 }

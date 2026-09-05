@@ -41,7 +41,7 @@ describe('generatePolicyNumber', () => {
   })
 
   /** The whole point: Tariqify IMS's own scheme is `MIMS<year><3 digits>`,
-   *  no separator, digits-only tail -- and Enpassent's two policy-number
+   *  no separator, digits-only tail -- and Enpasent's two policy-number
    *  sites had inherited that exact shape (one even reusing "POL" verbatim).
    *  The new scheme must not just swap the prefix back in the same slots. */
   it('is shaped differently from Tariqify IMS’s own scheme, not just relabelled', () => {

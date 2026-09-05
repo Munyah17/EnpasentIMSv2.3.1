@@ -26,7 +26,7 @@ export default function LoginScreen() {
           <div className="logo-mark">T</div>
           <div>
             <div className="logo-name">ENPASENT IMS</div>
-            <div className="logo-sub">Enpassent</div>
+            <div className="logo-sub">Enpasent</div>
           </div>
         </div>
 

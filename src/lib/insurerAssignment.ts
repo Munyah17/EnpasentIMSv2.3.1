@@ -3,7 +3,7 @@ import type { InsurerRecord } from '../types'
 /**
  * Which insurer a client is placed with, and what happens when nobody picks.
  *
- * Enpassent is a broker: it places business with almost every insurer in
+ * Enpasent is a broker: it places business with almost every insurer in
  * Zimbabwe, so the insurer is a real choice and the field is deliberately
  * optional -- a signup must never be blocked because the question was not
  * answered yet.

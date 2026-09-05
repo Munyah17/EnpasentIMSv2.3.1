@@ -208,8 +208,15 @@ async function creditPolicy(
   const next = new Date(base)
   next.setMonth(next.getMonth() + cycleMonths * periodsPaid)
 
+  // A policy sourced through the Developer API (every website signup) is
+  // always created 'pending' -- see createPolicy in api/v1/[...path].ts.
+  // A successful payment is what completes it: agriculture goes straight to
+  // 'active' (cover is on the crop, nothing to wait out); everything else
+  // starts its waiting period. Treated exactly like reinstating a 'lapsed'
+  // policy, since both are "this policy is not yet live and this payment is
+  // what makes it live."
   let newStatus = policy.status
-  if (policy.status === 'lapsed') newStatus = category === 'agriculture' ? 'active' : 'waiting_period'
+  if (policy.status === 'lapsed' || policy.status === 'pending') newStatus = category === 'agriculture' ? 'active' : 'waiting_period'
   else if (category === 'agriculture' && policy.status === 'waiting_period') newStatus = 'active'
 
   await admin.from('policies').update({

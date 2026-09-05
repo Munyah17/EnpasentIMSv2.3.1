@@ -33,10 +33,10 @@ export const DEFAULT_NOTIF_SETTINGS: NotifSettings = {
   // whoever underwrites a given policy is on the policy itself
   // (Policy.insurer), not here. This pair is left in place because
   // Settings/BillingReminders still read it, but it should not be trusted as
-  // "the" insurer for any one policy. Defaulted to Enpassent, the entity the
+  // "the" insurer for any one policy. Defaulted to Enpasent, the entity the
   // client actually deals with, rather than silently naming the house
   // insurer as if it were the only one.
-  insurerName: 'Enpassent Multiple Agent',
+  insurerName: 'Enpasent Multiple Agent',
   insurerEmail: 'info@enpassent.co.zw',
   insurerPhone: '+263242000000',
   // NetOne partnership is suspended for now — kept here (rather than
@@ -46,10 +46,10 @@ export const DEFAULT_NOTIF_SETTINGS: NotifSettings = {
   netoneEmail: 'insurance@netone.co.zw',
   netonePhone: '+263712001234',
   fromAddress: 'noreply@enpassent.co.zw',
-  fromName: 'Enpassent Multiple Agent',
+  fromName: 'Enpasent Multiple Agent',
   replyTo: 'admin@enpassent.co.zw',
   smsEnabled: false,
-  signature: 'Regards,\nEnpassent Multiple Agent',
+  signature: 'Regards,\nEnpasent Multiple Agent',
   superAdminPhone: '',
   companyAddress: '24 Midlothian Avenue, Eastlea, Harare, Zimbabwe',
   companyPhone: '+263 780 086 175 / +263 780 086 176 / +263 780 086 177 / +263 780 086 178',

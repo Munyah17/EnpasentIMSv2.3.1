@@ -46,7 +46,7 @@ export function isOwnReference(reference: string): boolean {
  *
  * The app this was cloned from (Tariqify IMS) generates its own policy
  * numbers as `MIMS<year><3 digits>` -- its own origin tag directly followed
- * by a truncated timestamp, no separator. Enpassent's own two policy-number
+ * by a truncated timestamp, no separator. Enpasent's own two policy-number
  * sites had inherited that exact shape, one even reusing the literal string
  * "POL" byte-for-byte from Tariqify's USSD flow -- so two systems built by
  * the same author could produce numbers indistinguishable from each other

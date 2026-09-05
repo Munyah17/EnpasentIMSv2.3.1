@@ -126,7 +126,7 @@ export default function Reports({ showToast }: Props) {
       await exportToPdf(
         `ipec-return-${dateStamp}.pdf`, 'IPEC Quarterly Return', ['Field', 'Value'],
         [
-          ['Intermediary Name', 'Enpassent Multiple Agent (Pvt) Ltd'],
+          ['Intermediary Name', 'Enpasent Multiple Agent (Pvt) Ltd'],
           ['IPEC Reg. Number', 'IPEC/IB/2020/001'],
           ['Total Policies Issued', totalPolicies],
           ['Active Policies', activePolicies],
@@ -162,7 +162,7 @@ export default function Reports({ showToast }: Props) {
       baseName = 'ipec-return'
       headers = ['Field', 'Value']
       rows = [
-        ['Intermediary Name', 'Enpassent Multiple Agent (Pvt) Ltd'],
+        ['Intermediary Name', 'Enpasent Multiple Agent (Pvt) Ltd'],
         ['IPEC Reg. Number', 'IPEC/IB/2020/001'],
         ['Total Policies Issued', totalPolicies],
         ['Active Policies', activePolicies],
@@ -516,7 +516,7 @@ export default function Reports({ showToast }: Props) {
           <h3 style={{ marginBottom: '1.5rem' }}>IPEC Quarterly Return: Q2 2026</h3>
           <table className="table">
             <tbody>
-              <tr><td><strong>Intermediary Name</strong></td><td>Enpassent Multiple Agent (Pvt) Ltd</td></tr>
+              <tr><td><strong>Intermediary Name</strong></td><td>Enpasent Multiple Agent (Pvt) Ltd</td></tr>
               <tr><td><strong>IPEC Reg. Number</strong></td><td>IPEC/IB/2020/001</td></tr>
               <tr><td><strong>Reporting Period</strong></td><td>01 April – 30 June 2026</td></tr>
               <tr><td><strong>Total Policies Issued</strong></td><td>{totalPolicies}</td></tr>

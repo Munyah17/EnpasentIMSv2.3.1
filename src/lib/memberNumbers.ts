@@ -91,7 +91,7 @@ export interface PolicyMember {
   policyNumber: string
   policyStatus: Policy['status']
   productCategory?: string
-  /** Which insurer actually underwrites this cover -- Enpassent places
+  /** Which insurer actually underwrites this cover -- Enpasent places
    *  business with almost every insurer in Zimbabwe, so a card must never
    *  assume it is any one of them by default. Undefined when the policy
    *  hasn't had an insurer chosen yet. */
