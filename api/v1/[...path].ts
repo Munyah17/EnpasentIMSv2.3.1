@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
+import { notifyClientRegistered_, notifyPolicyRegistered_ } from '../_lib/signupNotifications.js'
 
 /**
  * Public Developer API (/api/v1/...). External developers integrate this
@@ -184,9 +185,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else if (resource === 'quotes' && method === 'POST') {
       result = await getQuote(admin, body)
     } else if (resource === 'clients' && method === 'POST') {
-      result = await createClient_(admin, body, agentId)
+      result = await createClient_(admin, body, agentId, `https://${req.headers.host}`)
     } else if (resource === 'policies' && method === 'POST') {
-      result = await createPolicy(admin, body, agentId)
+      result = await createPolicy(admin, body, agentId, `https://${req.headers.host}`)
     } else if (resource === 'policies' && method === 'GET' && segments[1]) {
       result = await getPolicy(admin, segments[1], agentId)
     } else if (resource === 'payments' && method === 'POST') {
@@ -273,21 +274,28 @@ async function getQuote(admin: SupabaseClient, body: Json) {
   }
 }
 
-async function createClient_(admin: SupabaseClient, body: Json, agentId: string) {
+async function createClient_(admin: SupabaseClient, body: Json, agentId: string, origin: string) {
   const name = String(body.name ?? '').trim()
   const phone = String(body.phone ?? '').trim()
   const nationalId = String(body.nationalId ?? '').trim()
   if (!name || !phone || !nationalId) return { status: 400, body: { error: 'name, phone, and nationalId are required.' } }
+  const email = body.email ? String(body.email) : null
 
   const { data, error } = await admin.from('clients').insert({
     name, phone, national_id: nationalId,
-    email: body.email ? String(body.email) : null,
+    email,
     dob: body.dob ? String(body.dob) : null,
     address: body.address ? String(body.address) : null,
     occupation: body.occupation ? String(body.occupation) : null,
     status: 'active',
   }).select('id').single()
-  if (!error) return { status: 201, body: { data: { id: data.id, existing: false } } }
+  if (!error) {
+    // Awaited: see api/_lib/signupNotifications.ts's module comment on why
+    // this cannot be fire-and-forget on Vercel the way the staff app's
+    // browser-side equivalent is.
+    await notifyClientRegistered_(origin, { name, phone, email, nationalId }).catch(e => console.error('notifyClientRegistered_ failed', e))
+    return { status: 201, body: { data: { id: data.id, existing: false } } }
+  }
   if (error.code !== '23505') return { status: 400, body: { error: error.message } }
 
   // Already exists — only hand back the id (and let the caller treat it as
@@ -305,14 +313,14 @@ async function createClient_(admin: SupabaseClient, body: Json, agentId: string)
   }
 }
 
-async function createPolicy(admin: SupabaseClient, body: Json, agentId: string) {
+async function createPolicy(admin: SupabaseClient, body: Json, agentId: string, origin: string) {
   const clientId = body.clientId as string | undefined
   const productId = body.productId as string | undefined
   const paymentMethod = String(body.paymentMethod ?? 'EcoCash')
   if (!clientId || !productId) return { status: 400, body: { error: 'clientId and productId are required.' } }
   if (!isUuid(clientId) || !isUuid(productId)) return { status: 400, body: { error: 'clientId and productId must be valid UUIDs.' } }
 
-  const { data: client } = await admin.from('clients').select('id').eq('id', clientId).maybeSingle()
+  const { data: client } = await admin.from('clients').select('id, name, phone, email, national_id').eq('id', clientId).maybeSingle()
   if (!client) return { status: 404, body: { error: 'Client not found.' } }
 
   // A client with no policies yet is fair game (this developer would be
@@ -324,7 +332,7 @@ async function createPolicy(admin: SupabaseClient, body: Json, agentId: string) 
     return { status: 403, body: { error: 'This client is already associated with a different agent. Submit a support ticket (POST /api/v1/tickets) to request access.' } }
   }
 
-  const { data: product } = await admin.from('products').select('id, premium, cover_amount').eq('id', productId).eq('active', true).maybeSingle()
+  const { data: product } = await admin.from('products').select('id, name, category, premium, cover_amount').eq('id', productId).eq('active', true).maybeSingle()
   if (!product) return { status: 404, body: { error: 'Product not found or inactive.' } }
 
   const startDate = body.startDate ? new Date(String(body.startDate)) : new Date()
@@ -348,6 +356,16 @@ async function createPolicy(admin: SupabaseClient, body: Json, agentId: string) 
     agent_id: agentId,
   }).select('id, policy_number').single()
   if (error) return { status: 400, body: { error: error.message } }
+
+  // Awaited: see api/_lib/signupNotifications.ts's module comment on why
+  // this cannot be fire-and-forget on Vercel.
+  await notifyPolicyRegistered_(admin, origin, {
+    policyNumber: data.policy_number, productName: product.name, coverAmount: product.cover_amount,
+    premium: product.premium, category: product.category, startDate: startDate.toISOString().split('T')[0],
+    status: 'pending', paymentMethod,
+  }, { name: client.name, phone: client.phone, email: client.email, nationalId: client.national_id })
+    .catch(e => console.error('notifyPolicyRegistered_ failed', e))
+
   return { status: 201, body: { data: { id: data.id, policyNumber: data.policy_number, status: 'pending' } } }
 }
 
