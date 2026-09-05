@@ -11,6 +11,7 @@ import SuperAdminLogin from './components/Auth/SuperAdminLogin'
 import AdminLogin from './components/Auth/AdminLogin'
 import Sidebar from './components/Layout/Sidebar'
 import TopBar from './components/Layout/TopBar'
+import MobileTabBar from './components/Layout/MobileTabBar'
 import Toast from './components/ui/Toast'
 import SystemHealth from './components/ui/SystemHealth'
 import ChatWidget from './components/chat/ChatWidget'
@@ -187,7 +188,10 @@ function AppInner() {
       <Toast toasts={toasts} onDismiss={dismissToast} />
       <SystemHealth />
       {user.role === 'policyholder' && (
-        <ChatWidget prefill={{ name: user.name, phone: user.phone ?? '', email: user.email }} />
+        <>
+          <ChatWidget prefill={{ name: user.name, phone: user.phone ?? '', email: user.email }} />
+          <MobileTabBar activePanel={activePanel} setActivePanel={(panel) => setActivePanel(panel)} />
+        </>
       )}
     </div>
   )

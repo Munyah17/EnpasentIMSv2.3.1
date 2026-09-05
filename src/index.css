@@ -313,6 +313,13 @@ tbody tr:hover td{background:var(--surface)}
      input/select/textarea gets bumped to 16px on mobile only, so desktop
      keeps its tighter density. */
   .form-control,.login-form input,input,select,textarea{font-size:16px!important}
+
+  /* Policyholder bottom tab bar (only ever rendered for that role) */
+  .mobile-tab-bar{display:flex!important}
+  /* .chat-fab is only ever rendered alongside this tab bar (both gated to
+     the policyholder role in App.tsx), so it always needs to clear it here
+     — no extra conditional class needed. */
+  .chat-fab{bottom:78px!important}
 }
 
 /* Very small phones (≤400px) */
@@ -330,6 +337,34 @@ tbody tr:hover td{background:var(--surface)}
 .content-area{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px 22px 60px;-webkit-overflow-scrolling:touch}
 .content-area::-webkit-scrollbar{width:4px}
 .content-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* --- MOBILE TAB BAR (policyholder, ≤768px only — see .mobile-tab-bar
+   override in the mobile media query above) --- */
+.mobile-tab-bar{
+  display:none;position:fixed;left:0;right:0;bottom:0;z-index:301;
+  background:#fff;border-top:1px solid var(--border);
+  padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+  align-items:flex-end;justify-content:space-around;
+  box-shadow:0 -4px 20px rgba(0,0,0,0.06);
+}
+.mobile-tab-item{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:none;border:none;color:var(--text-secondary,#6b7e96);
+  font-size:10px;font-weight:500;padding:4px 6px;flex:1;min-width:0;cursor:pointer;
+}
+.mobile-tab-item .mobile-tab-icon{font-size:19px;line-height:1}
+.mobile-tab-item.active{color:var(--blue,#4169e1)}
+.mobile-tab-center{
+  flex:0 0 auto;margin-top:-26px;color:#fff;
+}
+.mobile-tab-center .mobile-tab-icon{
+  width:52px;height:52px;border-radius:50%;
+  background:var(--blue,#4169e1);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;box-shadow:0 6px 18px rgba(65,105,225,0.45);
+  border:3px solid #fff;
+}
+.mobile-tab-center .mobile-tab-label{color:var(--text-secondary,#6b7e96);margin-top:1px}
 .sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:299;cursor:pointer}
 
 /* --- SIDEBAR REACT CLASSES --- */
