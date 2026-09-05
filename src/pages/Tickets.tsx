@@ -5,6 +5,7 @@ import { db } from '../lib/db'
 import { formatDate } from '../lib/dateUtils'
 import NewTicketModal from '../components/modals/NewTicketModal'
 import ViewTicketModal from '../components/modals/ViewTicketModal'
+import { notifyTicketCreated, notifyTicketReplied, notifyTicketStatusChanged } from '../lib/ticketNotifications'
 
 interface Props {
   showToast: (type: ToastMessage['type'], message: string) => void
@@ -59,14 +60,25 @@ export default function Tickets({ showToast }: Props) {
     setTickets(prev => [data, ...prev])
     showToast('success', `Ticket ${data.ticketNumber} created.`)
     setShowNew(false)
+    void notifyTicketCreated(data)
   }
 
   const handleUpdate = async (updated: Ticket) => {
+    const previous = tickets.find(t => t.id === updated.id)
     const { data, error } = await db.tickets.update(updated.id, updated)
     if (error || !data) { showToast('error', 'Failed to update ticket.'); return }
     setTickets(prev => prev.map(t => t.id === data.id ? data : t))
     showToast('success', `Ticket ${data.ticketNumber} updated.`)
     setViewTicket(null)
+
+    if (previous) {
+      // Only a genuine staff reply (not the delegate-note the modal also
+      // appends on reassignment) tells the client something arrived.
+      const newReplies = data.messages.slice(previous.messages.length).filter(m => m.senderId === 'staff')
+      const lastReply = newReplies[newReplies.length - 1]
+      if (lastReply) void notifyTicketReplied(data, lastReply.message)
+      if (data.status !== previous.status) void notifyTicketStatusChanged(data, previous.status)
+    }
   }
 
   return (

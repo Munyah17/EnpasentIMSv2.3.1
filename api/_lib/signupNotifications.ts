@@ -61,6 +61,19 @@ async function mail(origin: string, to: string, subject: string, body: string): 
   } catch (e) { console.error('signupNotifications: email failed', to, e) }
 }
 
+/** A support ticket filed through the Developer API (POST /api/v1/tickets)
+ *  -- src/lib/ticketNotifications.ts's notifyTicketCreated is client-side
+ *  only, same gap as the signup notifications above, so this is its
+ *  server-side twin for this one channel. */
+export async function notifyNewTicket_(origin: string, ticket: { ticketNumber: string; subject: string; category: string; priority: string; description: string }): Promise<void> {
+  const jobs: Promise<void>[] = []
+  jobs.push(mail(origin, 'admin@enpassent.co.zw', `[New Ticket] ${ticket.ticketNumber}: ${ticket.subject}`,
+    `A new support ticket has been submitted via the Developer API.\n\nTicket Number: ${ticket.ticketNumber}\nCategory:      ${ticket.category}\nPriority:      ${ticket.priority}\n\n${ticket.description}`))
+  const alert = `${BRAND_NAME}: New API support ticket ${ticket.ticketNumber} (${ticket.priority}). ${ticket.subject}`
+  for (const number of ADMIN_ALERT_NUMBERS) jobs.push(text(number, alert))
+  await Promise.all(jobs)
+}
+
 interface ClientInfo { name: string; phone?: string | null; email?: string | null; nationalId?: string | null }
 
 /** A client registered with no policy yet -- e.g. a Developer API partner

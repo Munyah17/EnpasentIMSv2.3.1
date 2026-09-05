@@ -40,7 +40,7 @@ export default function ViewTicketModal({ ticket, staff, onClose, onSave }: Prop
     setReply('')
   }
 
-  const handleSave = () => {
+  const save = (nextStatus: TicketStatus, extraNote?: TicketMessage) => {
     let finalMessages = messages
     const newAssignee = staff.find(s => s.id === assignedTo)
     if (assignedTo !== (ticket.assignedTo ?? '') && user) {
@@ -56,14 +56,32 @@ export default function ViewTicketModal({ ticket, staff, onClose, onSave }: Prop
       }
       finalMessages = [...finalMessages, note]
     }
+    if (extraNote) finalMessages = [...finalMessages, extraNote]
     onSave({
       ...ticket,
-      status,
+      status: nextStatus,
       priority,
       assignedTo: assignedTo || undefined,
       assignedName: newAssignee?.name,
       messages: finalMessages,
       updatedAt: new Date().toISOString(),
+    })
+  }
+
+  const handleSave = () => save(status)
+
+  // One click, not "open the status dropdown, pick Open, then remember to
+  // save" -- for the case a client says they're still not satisfied after
+  // a ticket was marked resolved/closed.
+  const handleReopen = () => {
+    if (!user) return
+    save('open', {
+      id: `m${Date.now()}`,
+      senderId: 'system',
+      senderName: 'System',
+      message: `${user.name} reopened this ticket.`,
+      timestamp: new Date().toISOString(),
+      isStaff: true,
     })
   }
 
@@ -134,6 +152,9 @@ export default function ViewTicketModal({ ticket, staff, onClose, onSave }: Prop
         </div>
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          {(ticket.status === 'resolved' || ticket.status === 'closed') && (
+            <button className="btn btn-outline" onClick={handleReopen} title="Client not satisfied with the resolution">Reopen Ticket</button>
+          )}
           <button className="btn btn-primary" onClick={handleSave}>Save & Update</button>
         </div>
       </div>

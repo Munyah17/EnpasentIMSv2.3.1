@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
-import { notifyClientRegistered_, notifyPolicyRegistered_ } from '../_lib/signupNotifications.js'
+import { notifyClientRegistered_, notifyPolicyRegistered_, notifyNewTicket_ } from '../_lib/signupNotifications.js'
 
 /**
  * Public Developer API (/api/v1/...). External developers integrate this
@@ -193,7 +193,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else if (resource === 'payments' && method === 'POST') {
       result = await recordPayment(admin, body, agentId)
     } else if (resource === 'tickets' && method === 'POST') {
-      result = await submitApiTicket(admin, body, agentId, dev.company_name as string)
+      result = await submitApiTicket(admin, body, agentId, dev.company_name as string, `https://${req.headers.host}`)
     } else {
       result = { status: 404, body: { error: 'Unknown endpoint or missing path parameter.' } }
     }
@@ -475,7 +475,7 @@ async function recordPayment(admin: SupabaseClient, body: Json, agentId: string)
  * update/delete endpoint to external callers. clientId is required and
  * must belong to the calling developer, same as every other endpoint.
  */
-async function submitApiTicket(admin: SupabaseClient, body: Json, agentId: string, companyName: string) {
+async function submitApiTicket(admin: SupabaseClient, body: Json, agentId: string, companyName: string, origin: string) {
   const subject = String(body.subject ?? '').trim()
   const description = String(body.description ?? '').trim()
   const clientId = body.clientId ? String(body.clientId) : ''
@@ -487,16 +487,23 @@ async function submitApiTicket(admin: SupabaseClient, body: Json, agentId: strin
   const { data: ownPolicy } = await admin.from('policies').select('id').eq('client_id', clientId).eq('agent_id', agentId).limit(1).maybeSingle()
   if (!ownPolicy) return { status: 403, body: { error: 'clientId is not associated with this API key.' } }
 
+  const fullSubject = `[API Partner: ${companyName}] ${subject}`.slice(0, 200)
+  const category = 'API Partner Request'
+  const priority = 'high'
+
   const { data, error } = await admin.from('tickets').insert({
     ticket_number: refNumber('TKT'),
     client_id: clientId,
-    subject: `[API Partner: ${companyName}] ${subject}`.slice(0, 200),
+    subject: fullSubject,
     description,
     status: 'open',
-    priority: 'high',
-    category: 'API Partner Request',
+    priority,
+    category,
   }).select('id, ticket_number').single()
   if (error) return { status: 400, body: { error: error.message } }
+
+  await notifyNewTicket_(origin, { ticketNumber: data.ticket_number, subject: fullSubject, category, priority, description })
+    .catch(e => console.error('notifyNewTicket_ failed', e))
 
   return { status: 201, body: { data: { id: data.id, ticketNumber: data.ticket_number, status: 'open' } } }
 }

@@ -69,6 +69,21 @@ export default function LiveChat({ showToast }: Props) {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight })
   }, [messages])
 
+  // Auto-close after 5 minutes of no activity — see the matching note in
+  // ChatWidget.tsx for why this runs from here rather than a scheduled job.
+  // Only checks the session currently open in this window; ChatWidget.tsx
+  // does the same for whichever session a visitor has open, so between the
+  // two ends a stale chat gets caught by whichever side is actually watching.
+  useEffect(() => {
+    if (!selected || selected.status !== 'active') return
+    const check = () => {
+      const lastActivity = messages.length ? new Date(messages[messages.length - 1].createdAt).getTime() : new Date(selected.startedAt ?? selected.queuedAt).getTime()
+      if (Date.now() - lastActivity > 5 * 60 * 1000) chat.closeSession(selected.id)
+    }
+    const interval = setInterval(check, 30000)
+    return () => clearInterval(interval)
+  }, [selected, messages])
+
   const claim = async (session: ChatSession) => {
     if (!user) return
     const { error } = await chat.claimSession(session.id, user.id)

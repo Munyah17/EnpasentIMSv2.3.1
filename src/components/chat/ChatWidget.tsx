@@ -73,6 +73,21 @@ export default function ChatWidget({ prefill }: Props) {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight })
   }, [messages])
 
+  // Auto-close after 5 minutes of no activity from either side. Checked
+  // from whichever end (this widget, or the staff LiveChat page) happens to
+  // be open — there's no reliable way to run this on a schedule server-side
+  // without a third Vercel Cron job, which the Hobby plan's 2-job cap
+  // doesn't allow, so both ends watch independently instead.
+  useEffect(() => {
+    if (!session || session.status !== 'active') return
+    const check = () => {
+      const lastActivity = messages.length ? new Date(messages[messages.length - 1].createdAt).getTime() : new Date(session.startedAt ?? session.queuedAt).getTime()
+      if (Date.now() - lastActivity > 5 * 60 * 1000) chat.closeSession(session.id)
+    }
+    const interval = setInterval(check, 30000)
+    return () => clearInterval(interval)
+  }, [session, messages])
+
   const startChat = async () => {
     setFormError('')
     if (topics.length === 0) {
