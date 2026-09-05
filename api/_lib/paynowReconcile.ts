@@ -114,6 +114,33 @@ interface CreditOutcome {
 }
 
 /**
+ * Writes to the same activity_log table src/lib/activityLog.ts writes to,
+ * with the same column shape — duplicated rather than imported for the same
+ * reason billablePremium() below is: that module pulls in src/lib/supabase.ts,
+ * which reads import.meta.env and has no equivalent here. Only the outcomes
+ * a human actually needs to notice are logged (credited, failed, parked as a
+ * mismatch) — not every 'pending' webhook ping, which would bury the log in
+ * routine noise for a payment simply still in flight. Fire-and-forget: an
+ * audit trail that could fail the reconcile it's describing would be worse
+ * than the gap it leaves.
+ */
+async function logPaymentActivity(
+  admin: SupabaseClient,
+  action: 'payment.recorded' | 'payment.failed' | 'payment.mismatch',
+  entry: { entityId: string; entityLabel: string; detail: string; severity?: 'info' | 'notice' | 'warning' },
+): Promise<void> {
+  try {
+    await admin.from('activity_log').insert({
+      actor_id: null, actor_name: 'Paynow', actor_role: 'system',
+      action, entity_type: 'policy', entity_id: entry.entityId, entity_label: entry.entityLabel,
+      detail: entry.detail, severity: entry.severity ?? 'info',
+    })
+  } catch (e) {
+    console.error('activity_log write failed', action, e)
+  }
+}
+
+/**
  * Credits ONE policy for ONE amount under a payment reference, and advances
  * it exactly the way a direct single-policy payment always has. Used for
  * paynow_transactions' own primary policy_id, and again for every row in
@@ -140,7 +167,7 @@ async function creditPolicy(
 ): Promise<CreditOutcome> {
   const { data: policy } = await admin
     .from('policies')
-    .select('id, product_id, premium, dependants, status, next_payment_date')
+    .select('id, policy_number, product_id, premium, dependants, status, next_payment_date')
     .eq('id', input.policyId)
     .maybeSingle()
   if (!policy) {
@@ -191,6 +218,11 @@ async function creditPolicy(
     next_payment_date: next.toISOString().split('T')[0],
   }).eq('id', policy.id)
 
+  await logPaymentActivity(admin, 'payment.recorded', {
+    entityId: policy.id, entityLabel: policy.policy_number ?? policy.id,
+    detail: `Paynow confirmed ${input.currency} ${input.amount.toFixed(2)} against reference ${input.paymentReference}.`,
+  })
+
   return { ok: true, outcome: 'paid' }
 }
 
@@ -235,6 +267,11 @@ export async function reconcilePaynow(
     await admin.from('paynow_transactions')
       .update({ status: 'failed', paynow_reference: paynowReference, updated_at: now })
       .eq('reference', reference)
+    await logPaymentActivity(admin, 'payment.failed', {
+      entityId: txn.policy_id, entityLabel: reference,
+      detail: `Paynow reported "${status}" for reference ${reference} — no cover credited.`,
+      severity: 'warning',
+    })
     return { ...base, outcome: 'failed' }
   }
 
@@ -257,6 +294,11 @@ export async function reconcilePaynow(
       confirmed_amount: Number.isFinite(confirmedAmount) ? confirmedAmount : null, updated_at: now,
     }).eq('reference', reference)
     console.error(`paynow reconcile: AMOUNT MISMATCH ref=${reference} expected=${expectedAmount} confirmed=${confirmedAmount} ${currency}`)
+    await logPaymentActivity(admin, 'payment.mismatch', {
+      entityId: txn.policy_id, entityLabel: reference,
+      detail: `Paynow confirmed ${currency} ${Number.isFinite(confirmedAmount) ? confirmedAmount.toFixed(2) : 'an unreadable amount'} against reference ${reference}, but ${expectedAmount.toFixed(2)} was expected. Parked for manual review — nothing credited.`,
+      severity: 'warning',
+    })
     return { ...base, outcome: 'mismatch' }
   }
 

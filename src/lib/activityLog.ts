@@ -35,6 +35,14 @@ export type ActivityAction =
   // privileged manual act and has to be attributable to a person.
   | 'payment.recorded'
   | 'payment.validated'
+  // A gateway's own verdict on a reference, logged whichever of the three
+  // reconcile routes (webhook / verify / sweep) is the one that first sees
+  // it settle into that state — see api/_lib/paynowReconcile.ts. 'recorded'
+  // above covers the credited case; these cover the other outcomes staff
+  // need visibility into without having to read a policy's payment history
+  // to notice something never arrived.
+  | 'payment.failed'
+  | 'payment.mismatch'
   // Bulk / outbound
   | 'sms.bulk_sent'
 

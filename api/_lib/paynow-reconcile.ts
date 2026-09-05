@@ -113,11 +113,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  // A transaction can age out of the window above (created_at <=
+  // oldestToConsider) without ever resolving -- Paynow never answered
+  // 'paid', 'failed', or anything else, in 72 hours. Its row is left
+  // 'pending' rather than invented into some new terminal status (that
+  // would need a schema change no session here can apply), because it is
+  // still possible, if unlikely, that Paynow settles it later. But silently
+  // dropping it from every future sweep is exactly the "stuck, and nobody
+  // told anyone" case the audit trail exists to catch, so it gets flagged
+  // here once. The 24h-wide band below is sized to this cron's own daily
+  // schedule so a transaction crosses through it on exactly one run.
+  const justAbandonedFrom = new Date(now - (ABANDON_AFTER_HOURS + 24) * 3_600_000).toISOString()
+  const { data: justAbandoned } = await admin
+    .from('paynow_transactions')
+    .select('reference, policy_id')
+    .eq('status', 'pending')
+    .lt('created_at', oldestToConsider)
+    .gt('created_at', justAbandonedFrom)
+  for (const row of justAbandoned ?? []) {
+    try {
+      await admin.from('activity_log').insert({
+        actor_id: null, actor_name: 'Paynow', actor_role: 'system',
+        action: 'payment.failed', entity_type: 'policy', entity_id: row.policy_id,
+        entity_label: String(row.reference),
+        detail: `Reference ${row.reference} never got a verdict from Paynow after ${ABANDON_AFTER_HOURS} hours. Stopped polling it — check with the payer directly if cover is still expected.`,
+        severity: 'warning',
+      })
+    } catch (e) {
+      console.error('activity_log write failed for abandoned reference', row.reference, e)
+    }
+  }
+
   return res.status(200).json({
     ran: new Date().toISOString(),
     considered: pending.length,
     recovered: recovered.length,
     recoveredReferences: recovered,
+    abandoned: (justAbandoned ?? []).length,
     outcomes: tally as Record<ReconcileOutcome | string, number>,
   })
 }
