@@ -31,6 +31,19 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  *     the others hit the constraint and are told "already recorded", not an
  *     error. The policy is only advanced by the insert that actually won,
  *     so a premium is never counted twice.
+ *
+ * One transaction can now pay for more than one policy (see
+ * database/add_paynow_transaction_lines.sql) — enpassentims-website's Apply
+ * page cart, when it holds several products, initiates ONE Paynow checkout
+ * for the total rather than one per policy. paynow_transactions.policy_id
+ * stays the single "primary" policy exactly as before (nothing about the
+ * existing single-policy path changes); any OTHER policies in that same
+ * checkout get a row in paynow_transaction_lines, each with its own
+ * specific amount decided at initiate time — not a share of the total
+ * divided up after the fact. Both the primary and every line go through
+ * creditPolicy() below, the same crediting logic either way, so a
+ * five-policy cart is five independently accurate credits under one
+ * payment, not one approximate batch total.
  */
 
 export type ReconcileOutcome =
@@ -93,6 +106,92 @@ function billablePremium(policy: { premium: number; dependants: unknown }): numb
     ...dependants.map(d => (typeof d.premium === 'number' && Number.isFinite(d.premium) && d.premium > 0) ? d.premium : policy.premium),
   ]
   return Math.round(lines.reduce((s, n) => s + n, 0) * 100) / 100
+}
+
+interface CreditOutcome {
+  ok: boolean
+  outcome: 'paid' | 'already' | 'policy-missing' | 'write-failed'
+}
+
+/**
+ * Credits ONE policy for ONE amount under a payment reference, and advances
+ * it exactly the way a direct single-policy payment always has. Used for
+ * paynow_transactions' own primary policy_id, and again for every row in
+ * paynow_transaction_lines when a checkout covers more than one policy —
+ * the same logic either way, just given a different (policyId, amount,
+ * paymentReference) each time.
+ *
+ * `paymentReference` is what gets written to payments.reference, which is
+ * UNIQUE — for the primary policy this is the Paynow reference itself
+ * (unchanged from before this function existed); for a line it is derived
+ * (`<reference>-L<lineId>`) so several policies credited under the same
+ * Paynow reference each still get their own distinct, idempotent payments
+ * row rather than colliding on one.
+ */
+async function creditPolicy(
+  admin: SupabaseClient,
+  input: {
+    policyId: string
+    amount: number
+    currency: string
+    rate: number | null
+    paymentReference: string
+  },
+): Promise<CreditOutcome> {
+  const { data: policy } = await admin
+    .from('policies')
+    .select('id, product_id, premium, dependants, status, next_payment_date')
+    .eq('id', input.policyId)
+    .maybeSingle()
+  if (!policy) {
+    console.error('paynow reconcile: policy not found', input.policyId)
+    return { ok: false, outcome: 'policy-missing' }
+  }
+
+  // payments.reference is UNIQUE. If another route already recorded this
+  // exact (policy, payment) pairing, the insert hits that constraint
+  // (23505) and is success, not an error — this policy was already credited.
+  const now = new Date()
+  const { error: payError } = await admin.from('payments').insert({
+    reference: input.paymentReference, policy_id: policy.id, amount: input.amount, method: 'Paynow',
+    status: 'completed', payment_date: now.toISOString().split('T')[0],
+    currency: input.currency, rate: input.rate,
+  })
+  if (payError && payError.code !== '23505') {
+    console.error('paynow reconcile: payment insert failed', input.paymentReference, payError.message)
+    return { ok: false, outcome: 'write-failed' }
+  }
+  if (payError) return { ok: true, outcome: 'already' }
+
+  const { data: product } = await admin.from('products').select('category').eq('id', policy.product_id).maybeSingle()
+  const category = product?.category ?? ''
+  const cycleMonths = category === 'agriculture' ? 12 : 1
+
+  // How many periods this covers. The PRICE is converted into the currency
+  // charged, never the payment into USD — see the module comment on why
+  // (dividing a ZiG amount by a USD premium reads as many times the real
+  // period count). The rate stored on the transaction is used, not today's,
+  // so a payment is always counted at what it was actually quoted at.
+  const rate = input.rate && input.rate > 0 ? input.rate : 1
+  const perPeriod = billablePremium(policy) * (input.currency === 'USD' ? 1 : rate)
+  const periodsPaid = perPeriod > 0 ? Math.max(1, Math.round(input.amount / perPeriod)) : 1
+
+  const base = policy.next_payment_date && new Date(policy.next_payment_date) > now
+    ? new Date(policy.next_payment_date) : now
+  const next = new Date(base)
+  next.setMonth(next.getMonth() + cycleMonths * periodsPaid)
+
+  let newStatus = policy.status
+  if (policy.status === 'lapsed') newStatus = category === 'agriculture' ? 'active' : 'waiting_period'
+  else if (category === 'agriculture' && policy.status === 'waiting_period') newStatus = 'active'
+
+  await admin.from('policies').update({
+    status: newStatus,
+    last_payment_date: now.toISOString().split('T')[0],
+    next_payment_date: next.toISOString().split('T')[0],
+  }).eq('id', policy.id)
+
+  return { ok: true, outcome: 'paid' }
 }
 
 /**
@@ -161,81 +260,48 @@ export async function reconcilePaynow(
     return { ...base, outcome: 'mismatch' }
   }
 
-  const { data: policy } = await admin
-    .from('policies')
-    .select('id, product_id, premium, dependants, status, next_payment_date')
-    .eq('id', txn.policy_id)
-    .maybeSingle()
-  if (!policy) {
-    console.error('paynow reconcile: policy not found', reference, txn.policy_id)
-    return { ...base, outcome: 'policy-missing' }
-  }
+  const txnRate = Number(txn.rate)
+  const rate = Number.isFinite(txnRate) && txnRate > 0 ? txnRate : null
 
-  // payments.reference is UNIQUE. If another route already recorded this,
-  // the insert hits that constraint (23505) and is success, not an error.
-  //
-  // Recorded in the currency it was actually made in. A ZiG payment stays a
-  // ZiG payment and is never converted back to a dollar figure -- doing that
-  // would bake today's rate into a historical record and make the books
-  // disagree with the bank. amount_usd/amount_zwg are generated from these
-  // two columns, so a per-currency total is a sum of one column and the
-  // figures cannot drift apart. `rate` is what this ZiG figure was worked
-  // out at, kept so the price the client was quoted stays reconstructable.
-  const { error: payError } = await admin.from('payments').insert({
-    reference, policy_id: policy.id, amount: confirmedAmount, method: 'Paynow',
-    status: 'completed', payment_date: now.split('T')[0],
-    currency, rate: txn.rate ?? null,
+  const primary = await creditPolicy(admin, {
+    policyId: txn.policy_id, amount: confirmedAmount, currency, rate, paymentReference: reference,
   })
-  if (payError && payError.code !== '23505') {
-    console.error('paynow reconcile: payment insert failed', reference, payError.message)
-    return { ...base, outcome: 'write-failed' }
-  }
 
   await admin.from('paynow_transactions').update({
     status: 'paid', paynow_reference: paynowReference, confirmed_amount: confirmedAmount, updated_at: now,
   }).eq('reference', reference)
 
-  if (payError) {
-    // 23505 — another route inserted this payment and already advanced the
-    // policy for it. Doing it again would move next_payment_date twice for
-    // one premium.
-    return { ...base, outcome: 'already', alreadyHandled: true }
+  if (primary.outcome === 'policy-missing') return { ...base, outcome: 'policy-missing' }
+  if (primary.outcome === 'write-failed') return { ...base, outcome: 'write-failed' }
+
+  // 'already' on the primary doesn't necessarily mean nothing here is new:
+  // a retry landing mid-way through a multi-policy checkout could have
+  // credited the primary on an earlier call but not yet reached every line.
+  // Tracked across all of them so a still-uncredited policy in a bundle is
+  // never abandoned just because the primary was already handled, and so
+  // notifyPaymentOutcome only fires once real, first-time work happened.
+  let anyNewCredit = primary.outcome === 'paid'
+
+  const { data: lineRows } = await admin
+    .from('paynow_transaction_lines')
+    .select('id, policy_id, amount')
+    .eq('reference', reference)
+
+  for (const line of lineRows ?? []) {
+    const lineResult = await creditPolicy(admin, {
+      policyId: line.policy_id, amount: Number(line.amount), currency, rate,
+      paymentReference: `${reference}-L${line.id}`,
+    })
+    if (lineResult.outcome === 'paid') anyNewCredit = true
+    if (!lineResult.ok) {
+      // A failure crediting one policy in a bundle must never silence the
+      // others, but it also must not vanish: real money was confirmed for
+      // this reference and one policy in it did not get the cover it paid
+      // for. Loud on purpose -- this is exactly the shape of problem a
+      // human has to see, not infer from an unexplained gap later.
+      console.error(`paynow reconcile: LINE CREDIT FAILED ref=${reference} policy=${line.policy_id} outcome=${lineResult.outcome}`)
+    }
   }
 
-  const { data: product } = await admin.from('products').select('category').eq('id', policy.product_id).maybeSingle()
-  const category = product?.category ?? ''
-  const cycleMonths = category === 'agriculture' ? 12 : 1
-
-  // How many periods this covers.
-  //
-  // The PRICE is converted into the currency charged, never the payment
-  // into USD. Premiums are held in USD and confirmedAmount is in `currency`,
-  // so dividing one by the other directly compares two different
-  // denominations: ZiG 1250 against a US$45 premium reads as 28 periods, and
-  // a single month's payment would advance the policy past two years.
-  //
-  // The rate stored on the transaction is used rather than today's, so a
-  // payment is always counted at what it was actually quoted at.
-  const txnRate = Number(txn.rate)
-  const rate = Number.isFinite(txnRate) && txnRate > 0 ? txnRate : 1
-  const perPeriod = billablePremium(policy) * (currency === 'USD' ? 1 : rate)
-  const periodsPaid = perPeriod > 0 ? Math.max(1, Math.round(confirmedAmount / perPeriod)) : 1
-
-  const today = new Date()
-  const from = policy.next_payment_date && new Date(policy.next_payment_date) > today
-    ? new Date(policy.next_payment_date) : today
-  const next = new Date(from)
-  next.setMonth(next.getMonth() + cycleMonths * periodsPaid)
-
-  let newStatus = policy.status
-  if (policy.status === 'lapsed') newStatus = category === 'agriculture' ? 'active' : 'waiting_period'
-  else if (category === 'agriculture' && policy.status === 'waiting_period') newStatus = 'active'
-
-  await admin.from('policies').update({
-    status: newStatus,
-    last_payment_date: today.toISOString().split('T')[0],
-    next_payment_date: next.toISOString().split('T')[0],
-  }).eq('id', policy.id)
-
-  return { ...base, outcome: 'paid' }
+  return { ...base, outcome: anyNewCredit ? 'paid' : 'already', alreadyHandled: !anyNewCredit }
 }

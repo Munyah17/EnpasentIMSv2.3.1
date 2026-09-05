@@ -44,6 +44,9 @@ interface RequestBody {
   resultUrl?: string
   pollUrl?: string
   policyId?: string
+  /** Other policies riding on this same checkout -- see the initiate
+   *  handler and database/add_paynow_transaction_lines.sql. */
+  additionalPolicies?: { policyId?: string; usdAmount?: number; description?: string }[]
 }
 
 function admin(): SupabaseClient | null {
@@ -182,6 +185,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Could not determine the amount to charge.' })
       }
 
+      // Optional: other policies riding on this same checkout (see
+      // database/add_paynow_transaction_lines.sql). Each is converted at the
+      // same rate as the primary -- one Paynow transaction is one currency,
+      // so a cart cannot mix a ZiG line into a USD checkout. The full total
+      // sent to Paynow is the primary amount plus every line's, added below.
+      const additionalPoliciesRaw = Array.isArray(body.additionalPolicies) ? body.additionalPolicies : []
+      const additionalPolicies: { policyId: string; amount: number; description: string }[] = []
+      for (const entry of additionalPoliciesRaw) {
+        const e = entry as Record<string, unknown>
+        const linePolicyId = String(e?.policyId ?? '')
+        const lineUsdAmount = Number(e?.usdAmount)
+        if (!linePolicyId || !Number.isFinite(lineUsdAmount) || lineUsdAmount <= 0) {
+          return res.status(400).json({ error: 'Each entry in additionalPolicies needs a policyId and a positive usdAmount.' })
+        }
+        additionalPolicies.push({
+          policyId: linePolicyId,
+          amount: Math.round(lineUsdAmount * rate * 100) / 100,
+          description: String(e?.description || 'Additional policy'),
+        })
+      }
+      const totalAmount = Math.round((amount + additionalPolicies.reduce((s, l) => s + l.amount, 0)) * 100) / 100
+
       // Built as Paynow's Node quickstart documents it: construct with the
       // integration pair, assign the URLs, createPayment, add, send.
       const paynow = new Paynow(creds.integrationId, creds.integrationKey)
@@ -211,7 +236,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const payment = (paynowIsLive() && body.email)
         ? paynow.createPayment(reference, body.email)
         : paynow.createPayment(reference)
+      // One cart item per line, itemised on Paynow's own page, rather than
+      // a single opaque total -- and their sum is what Paynow is actually
+      // asked to collect, so it can never drift from totalAmount below.
       payment.add(body.description || 'Insurance Premium', amount)
+      for (const line of additionalPolicies) payment.add(line.description, line.amount)
 
       const response = await paynow.send(payment)
       if (!response || !response.success) {
@@ -228,12 +257,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // poll URL is stored because it is the only way to ask Paynow about
       // this reference later — without it, a lost webhook leaves a payment
       // that cleared with nothing able to find out.
-      // expected_amount is what Paynow was actually asked for, in `currency`
-      // -- so the webhook's amount check compares ZiG against ZiG. usd_amount
-      // and rate are kept alongside it so the USD price this came from, and
-      // what it was converted at, stay reconstructable after the rate moves.
+      //
+      // expected_amount is totalAmount, not the primary's amount alone --
+      // Paynow was asked for and will confirm the FULL cart total (the
+      // primary's item plus every additionalPolicies line, added to the
+      // same payment above), so the webhook's amount-mismatch check has to
+      // compare against that same total or a legitimate multi-policy
+      // checkout would be flagged as a mismatch on every single payment.
+      // usd_amount and rate are kept alongside it so the USD price this
+      // came from, and what it was converted at, stay reconstructable.
       const { error: trackError } = await db.from('paynow_transactions').insert({
-        reference, policy_id: policyId, expected_amount: amount,
+        reference, policy_id: policyId, expected_amount: totalAmount,
         status: 'pending', currency, poll_url: pollUrl,
         usd_amount: usdAmount, rate,
       })
@@ -242,6 +276,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // failing the response — but reconciliation for this reference is
         // degraded until it is fixed.
         console.error('paynow_transactions insert failed', reference, trackError.message)
+      } else if (additionalPolicies.length > 0) {
+        // One row per additional policy so paynowReconcile.ts can credit
+        // each one its own specific amount once the transaction settles.
+        // Best-effort logged the same way as the transaction insert above:
+        // a failure here does not undo the Paynow transaction either, and
+        // the primary policy is still credited correctly regardless.
+        const { error: linesError } = await db.from('paynow_transaction_lines').insert(
+          additionalPolicies.map(line => ({ reference, policy_id: line.policyId, amount: line.amount })),
+        )
+        if (linesError) console.error('paynow_transaction_lines insert failed', reference, linesError.message)
       }
 
       return res.status(200).json({
@@ -249,10 +293,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         redirectUrl: String(response.redirectUrl ?? ''),
         pollUrl,
         currency,
-        // What Paynow will actually charge, and what it was converted at, so
-        // the caller records and shows the figure the payer is about to be
-        // asked for rather than the USD it came from.
-        amount,
+        // What Paynow will actually charge in total, and what it was
+        // converted at, so the caller shows the figure the payer is about
+        // to be asked for rather than the USD it came from.
+        amount: totalAmount,
         usdAmount,
         rate,
       })
